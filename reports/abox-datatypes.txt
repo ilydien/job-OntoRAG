@@ -1,0 +1,55 @@
+O*NET ABox datatype audit (source: onet_abox.ttl, streamed as N-Triples)
+Schema: onet_schema.ttl (post taskID fix)
+
+Literal triples scanned: 4,274,072
+
+predicate                    expected       observed                                      status
+-------------------------------------------------------------------------------------------------------------------
+activity                     xsd:string     xsd:string (188)                              OK
+anchorDescription            xsd:string     xsd:string (483)                              OK
+anchorValue                  xsd:integer    xsd:integer (483)                             OK
+career#hollandLetter         xsd:string     (absent)                                      OK (no ABox values)
+career#levelOrder            xsd:integer    (absent)                                      OK (no ABox values)
+category                     xsd:integer    xsd:integer (60)                              OK
+categoryDescription          xsd:string     xsd:string (60)                               OK
+dataValue                    xsd:float      xsd:float (578,558)                           OK
+dateUpdated                  xsd:dateTime   xsd:dateTime (622,744)                        OK
+description                  xsd:string     xsd:string (1,603)                            OK
+domainSource                 xsd:string     xsd:string (622,744)                          OK
+education                    xsd:string     xsd:string (4)                                OK
+elementID                    xsd:string     xsd:string (3,006)                            OK
+elementName                  xsd:string     xsd:string (3,006)                            OK
+examples                     xsd:string     xsd:string (4)                                OK
+experience                   xsd:string     xsd:string (4)                                OK
+incumbentsResponding         xsd:integer    xsd:integer (18,251)                          OK
+jobTitle                     xsd:string     xsd:string (54,269)                           OK
+jobTraining                  xsd:string     xsd:string (4)                                OK
+jobZone                      xsd:integer    xsd:integer (4)                               OK
+keyword                      xsd:string     xsd:string (75)                               OK
+keywordType                  xsd:string     xsd:string (75)                               OK
+lowerCIBound                 xsd:float      xsd:float (376,713)                           OK
+maximum                      xsd:integer    xsd:integer (33)                              OK
+minimum                      xsd:integer    xsd:integer (33)                              OK
+n                            xsd:integer    xsd:integer (494,336)                         OK
+name                         xsd:string     xsd:string (4)                                OK
+notRelevant                  xsd:boolean    xsd:boolean (146,551)                         OK
+onetSOCCode                  xsd:string     xsd:string (1,016)                            OK
+recommendSuppress            xsd:boolean    xsd:boolean (402,812)                         OK
+relatedIndex                 xsd:integer    xsd:integer (18,460)                          OK
+relatednessTier              xsd:string     xsd:string (18,460)                           OK
+reportedJobTitle             xsd:string     xsd:string (8,189)                            OK
+scaleID                      xsd:string     xsd:string (33)                               OK
+scaleName                    xsd:string     xsd:string (33)                               OK
+shortTitle                   xsd:string     xsd:string (4,455)                            OK
+shownInMyNextMove            xsd:boolean    xsd:boolean (8,189)                           OK
+sources                      xsd:string     xsd:string (54,269)                           OK
+standardError                xsd:float      xsd:float (400,692)                           OK
+svpRange                     xsd:string     xsd:string (4)                                OK
+task                         xsd:string     xsd:string (19,176)                           OK
+taskID                       xsd:integer    xsd:integer (18,838)                          OK
+taskType                     xsd:string     xsd:string (18,420)                           OK
+title                        xsd:string     xsd:string (1,016)                            OK
+upperCIBound                 xsd:float      xsd:float (376,713)                           OK
+
+Datatype mismatches: 0
+All observed datatypes are compatible with the declared ranges.

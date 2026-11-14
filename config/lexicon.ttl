@@ -1,0 +1,363 @@
+@prefix : <https://www.onetcenter.org/rdf/schema/onet/> .
+@prefix career: <https://example.org/career#> .
+@prefix lex: <https://example.org/lex#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# Declarative extraction lexicon
+# =============================================================================
+# Every keyword/pattern is domain knowledge and lives here, not in Python.
+# targetKind values understood by the generic extractor:
+#   holland, holland_code, element, education, job_zone, negation
+
+# -----------------------------------------------------------------------------
+# Education patterns
+# -----------------------------------------------------------------------------
+
+lex:entry_education_s1 a lex:LexicalEntry ;
+    rdfs:label "S1 / bachelor expressions"@en ;
+    lex:pattern "\\b(?:s1|sarjana|strata\\s*1|strata\\s*satu|bachelor|undergraduate)\\b" ;
+    lex:targetKind "education" ;
+    lex:target "S1" ;
+    lex:weight "1.0"^^xsd:decimal .
+
+lex:entry_education_d3 a lex:LexicalEntry ;
+    rdfs:label "D3 / associate expressions"@en ;
+    lex:pattern "\\b(?:d3|diploma\\s*3|diploma\\s*tiga|associate(?:'s)?\\s*degree|associate)\\b" ;
+    lex:targetKind "education" ;
+    lex:target "D3" ;
+    lex:weight "1.0"^^xsd:decimal .
+
+lex:entry_education_s2 a lex:LexicalEntry ;
+    rdfs:label "S2 / master expressions"@en ;
+    lex:pattern "\\b(?:s2|magister|strata\\s*2|master(?:'s)?\\s*degree|master)\\b" ;
+    lex:targetKind "education" ;
+    lex:target "S2" ;
+    lex:weight "1.0"^^xsd:decimal .
+
+lex:entry_education_s3 a lex:LexicalEntry ;
+    rdfs:label "S3 / doctoral expressions"@en ;
+    lex:pattern "\\b(?:s3|doktor|doctorate|doctoral|phd|strata\\s*3)\\b" ;
+    lex:targetKind "education" ;
+    lex:target "S3" ;
+    lex:weight "1.0"^^xsd:decimal .
+
+lex:entry_education_sma a lex:LexicalEntry ;
+    rdfs:label "high-school expressions"@en ;
+    lex:pattern "\\b(?:sma|smk|sekolah\\s*menengah|high\\s*school|senior\\s*high)\\b" ;
+    lex:targetKind "education" ;
+    lex:target "Level2_HighSchool" ;
+    lex:weight "1.0"^^xsd:decimal .
+
+# -----------------------------------------------------------------------------
+# Job-zone and RIASEC-code patterns
+# -----------------------------------------------------------------------------
+
+lex:entry_job_zone a lex:LexicalEntry ;
+    rdfs:label "explicit job-zone expression"@en ;
+    lex:pattern "(?:job\\s*zone|zona(?:\\s*kerja)?|level\\s*kerja)\\s*([1-5])" ;
+    lex:targetKind "job_zone" ;
+    lex:weight "1.0"^^xsd:decimal .
+
+lex:entry_riasec_code a lex:LexicalEntry ;
+    rdfs:label "explicit RIASEC code"@en ;
+    lex:pattern "\\b([RIASEC]{2,3})\\b" ;
+    lex:targetKind "holland_code" ;
+    lex:weight "1.0"^^xsd:decimal .
+
+# -----------------------------------------------------------------------------
+# Negation markers
+# -----------------------------------------------------------------------------
+
+lex:negationWindow a owl:DatatypeProperty ;
+    rdfs:label "maximum characters between a negation marker and its target"@en .
+
+lex:entry_negation a lex:LexicalEntry ;
+    rdfs:label "negation markers"@en ;
+    lex:keyword "tidak", "bukan", "tanpa", "jangan", "kurang", "not", "no", "without" ;
+    lex:targetKind "negation" ;
+    lex:negationWindow 35 ;
+    lex:weight "1.0"^^xsd:decimal .
+
+# -----------------------------------------------------------------------------
+# Holland / RIASEC vocabulary
+# -----------------------------------------------------------------------------
+
+lex:entry_holland_realistic a lex:LexicalEntry ;
+    rdfs:label "Realistic vocabulary"@en ;
+    lex:keyword "mesin", "alat", "peralatan", "membangun", "konstruksi", "fisik", "lapangan", "praktik", "praktis", "teknisi", "memperbaiki", "outdoor", "machine", "tools", "build", "construction", "physical", "hands-on", "repair" ;
+    lex:targetKind "holland" ;
+    lex:target "Realistic" ;
+    lex:weight "0.75"^^xsd:decimal .
+
+lex:entry_holland_investigative a lex:LexicalEntry ;
+    rdfs:label "Investigative vocabulary"@en ;
+    lex:keyword "riset", "penelitian", "meneliti", "analisis", "menganalisis", "data", "ilmiah", "sains", "logika", "eksperimen", "memecahkan", "research", "analysis", "analyze", "data", "science", "scientific", "experiment", "problem solving" ;
+    lex:targetKind "holland" ;
+    lex:target "Investigative" ;
+    lex:weight "0.75"^^xsd:decimal .
+
+lex:entry_holland_artistic a lex:LexicalEntry ;
+    rdfs:label "Artistic vocabulary"@en ;
+    lex:keyword "seni", "kreatif", "kreativitas", "desain", "mendesain", "musik", "gambar", "menggambar", "menulis", "imajinasi", "art", "creative", "design", "music", "draw", "writing", "imagination" ;
+    lex:targetKind "holland" ;
+    lex:target "Artistic" ;
+    lex:weight "0.75"^^xsd:decimal .
+
+lex:entry_holland_social a lex:LexicalEntry ;
+    rdfs:label "Social vocabulary"@en ;
+    lex:keyword "membantu", "menolong", "melayani", "mengajar", "merawat", "konseling", "komunitas", "sosial", "peduli", "help", "helping", "serve", "teaching", "care", "counseling", "community", "social" ;
+    lex:targetKind "holland" ;
+    lex:target "Social" ;
+    lex:weight "0.75"^^xsd:decimal .
+
+lex:entry_holland_enterprising a lex:LexicalEntry ;
+    rdfs:label "Enterprising vocabulary"@en ;
+    lex:keyword "memimpin", "pemimpin", "bisnis", "wirausaha", "menjual", "negosiasi", "mempengaruhi", "manajemen", "mengelola", "lead", "leader", "business", "entrepreneur", "sell", "negotiate", "persuade", "manage" ;
+    lex:targetKind "holland" ;
+    lex:target "Enterprising" ;
+    lex:weight "0.75"^^xsd:decimal .
+
+lex:entry_holland_conventional a lex:LexicalEntry ;
+    rdfs:label "Conventional vocabulary"@en ;
+    lex:keyword "teratur", "administrasi", "arsip", "detail", "keuangan", "prosedur", "sistematis", "akuntansi", "organized", "administration", "records", "detail", "finance", "procedure", "systematic", "accounting" ;
+    lex:targetKind "holland" ;
+    lex:target "Conventional" ;
+    lex:weight "0.75"^^xsd:decimal .
+
+# -----------------------------------------------------------------------------
+# Element vocabulary (targets are exact O*NET element names)
+# -----------------------------------------------------------------------------
+
+lex:entry_element_math a lex:LexicalEntry ;
+    rdfs:label "mathematics vocabulary"@en ;
+    lex:keyword "matematika", "berhitung", "angka", "statistik", "perhitungan", "mathematics", "math", "statistics", "numbers", "calculation" ;
+    lex:targetKind "element" ;
+    lex:target "Mathematics/Statistics" ;
+    lex:weight "0.70"^^xsd:decimal .
+
+lex:entry_element_oral_communication a lex:LexicalEntry ;
+    rdfs:label "oral communication vocabulary"@en ;
+    lex:keyword "komunikasi", "berbicara", "presentasi", "menjelaskan", "wawancara", "communication", "speaking", "presentation", "explain", "interview" ;
+    lex:targetKind "element" ;
+    lex:target "Oral Communication" ;
+    lex:weight "0.65"^^xsd:decimal .
+
+lex:entry_element_writing a lex:LexicalEntry ;
+    rdfs:label "writing vocabulary"@en ;
+    lex:keyword "menulis", "tulisan", "laporan", "dokumen", "writing", "write", "report", "document" ;
+    lex:targetKind "element" ;
+    lex:target "Writing" ;
+    lex:weight "0.65"^^xsd:decimal .
+
+lex:entry_element_reading a lex:LexicalEntry ;
+    rdfs:label "reading vocabulary"@en ;
+    lex:keyword "membaca", "membaca cepat", "reading", "read" ;
+    lex:targetKind "element" ;
+    lex:target "Reading Comprehension" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_critical_thinking a lex:LexicalEntry ;
+    rdfs:label "critical thinking vocabulary"@en ;
+    lex:keyword "analitis", "kritis", "logis", "penalaran", "critical thinking", "critical", "logical", "reasoning" ;
+    lex:targetKind "element" ;
+    lex:target "Critical Thinking" ;
+    lex:weight "0.65"^^xsd:decimal .
+
+lex:entry_element_active_listening a lex:LexicalEntry ;
+    rdfs:label "active listening vocabulary"@en ;
+    lex:keyword "mendengar", "menyimak", "empati", "active listening", "listening", "empathy" ;
+    lex:targetKind "element" ;
+    lex:target "Active Listening" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_complex_problem a lex:LexicalEntry ;
+    rdfs:label "complex problem solving vocabulary"@en ;
+    lex:keyword "pemecahan masalah", "memecahkan masalah", "problem solving", "troubleshooting", "complex problem" ;
+    lex:targetKind "element" ;
+    lex:target "Complex Problem Solving" ;
+    lex:weight "0.65"^^xsd:decimal .
+
+lex:entry_element_instructing a lex:LexicalEntry ;
+    rdfs:label "teaching vocabulary"@en ;
+    lex:keyword "mengajar", "melatih", "instruktur", "pelatihan", "teaching", "teach", "training", "instructor" ;
+    lex:targetKind "element" ;
+    lex:target "Instructing" ;
+    lex:weight "0.65"^^xsd:decimal .
+
+lex:entry_element_negotiation a lex:LexicalEntry ;
+    rdfs:label "negotiation vocabulary"@en ;
+    lex:keyword "negosiasi", "bernegosiasi", "negosiasi kontrak", "negotiation", "negotiate" ;
+    lex:targetKind "element" ;
+    lex:target "Negotiation" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_persuasion a lex:LexicalEntry ;
+    rdfs:label "persuasion vocabulary"@en ;
+    lex:keyword "membujuk", "persuasi", "mempengaruhi orang", "persuasion", "persuade", "influence" ;
+    lex:targetKind "element" ;
+    lex:target "Persuasion" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_service a lex:LexicalEntry ;
+    rdfs:label "service orientation vocabulary"@en ;
+    lex:keyword "pelayanan", "melayani", "layanan pelanggan", "keramahtamahan", "service orientation", "customer service", "hospitality" ;
+    lex:targetKind "element" ;
+    lex:target "Service Orientation" ;
+    lex:weight "0.65"^^xsd:decimal .
+
+lex:entry_element_time_management a lex:LexicalEntry ;
+    rdfs:label "time management vocabulary"@en ;
+    lex:keyword "manajemen waktu", "mengatur waktu", "tepat waktu", "time management", "scheduling" ;
+    lex:targetKind "element" ;
+    lex:target "Time Management" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_coordination a lex:LexicalEntry ;
+    rdfs:label "coordination vocabulary"@en ;
+    lex:keyword "koordinasi", "mengoordinasikan", "kerja sama tim", "coordination", "coordinate", "teamwork" ;
+    lex:targetKind "element" ;
+    lex:target "Coordination" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_programming a lex:LexicalEntry ;
+    rdfs:label "programming vocabulary"@en ;
+    lex:keyword "pemrograman", "coding", "program komputer", "software", "programming", "developer", "application" ;
+    lex:targetKind "element" ;
+    lex:target "Programming" ;
+    lex:weight "0.65"^^xsd:decimal .
+
+lex:entry_element_design a lex:LexicalEntry ;
+    rdfs:label "design vocabulary"@en ;
+    lex:keyword "desain", "mendesain", "rancangan", "design", "designing" ;
+    lex:targetKind "element" ;
+    lex:target "Design" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_repairing a lex:LexicalEntry ;
+    rdfs:label "repairing vocabulary"@en ;
+    lex:keyword "perbaikan", "memperbaiki", "servis", "reparasi", "repair", "repairing", "maintenance" ;
+    lex:targetKind "element" ;
+    lex:target "Repairing" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_building a lex:LexicalEntry ;
+    rdfs:label "construction vocabulary"@en ;
+    lex:keyword "membangun", "konstruksi", "bangunan", "building", "construction" ;
+    lex:targetKind "element" ;
+    lex:target "Building and Construction" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_health a lex:LexicalEntry ;
+    rdfs:label "health vocabulary"@en ;
+    lex:keyword "kesehatan", "medis", "dokter", "perawat", "merawat pasien", "health", "medical", "medicine", "nursing", "patient care" ;
+    lex:targetKind "element" ;
+    lex:target "Medicine and Dentistry" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_law a lex:LexicalEntry ;
+    rdfs:label "law vocabulary"@en ;
+    lex:keyword "hukum", "legal", "pengacara", "peraturan", "law", "legal", "lawyer", "regulation" ;
+    lex:targetKind "element" ;
+    lex:target "Law and Government" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_finance a lex:LexicalEntry ;
+    rdfs:label "finance vocabulary"@en ;
+    lex:keyword "keuangan", "akuntansi", "audit", "anggaran", "finance", "accounting", "audit", "budget" ;
+    lex:targetKind "element" ;
+    lex:target "Economics and Accounting" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_sales a lex:LexicalEntry ;
+    rdfs:label "sales and marketing vocabulary"@en ;
+    lex:keyword "pemasaran", "penjualan", "menjual", "sales", "marketing", "selling" ;
+    lex:targetKind "element" ;
+    lex:target "Sales and Marketing" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_hr a lex:LexicalEntry ;
+    rdfs:label "human resources vocabulary"@en ;
+    lex:keyword "sdm", "sumber daya manusia", "personalia", "human resources", "personnel", "hr" ;
+    lex:targetKind "element" ;
+    lex:target "Personnel and Human Resources" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_production a lex:LexicalEntry ;
+    rdfs:label "production vocabulary"@en ;
+    lex:keyword "produksi", "manufaktur", "pabrik", "production", "manufacturing", "factory" ;
+    lex:targetKind "element" ;
+    lex:target "Production and Processing" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_transportation a lex:LexicalEntry ;
+    rdfs:label "transportation vocabulary"@en ;
+    lex:keyword "transportasi", "mengemudi", "logistik", "transportation", "driving", "logistics" ;
+    lex:targetKind "element" ;
+    lex:target "Transportation" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_biology a lex:LexicalEntry ;
+    rdfs:label "biology vocabulary"@en ;
+    lex:keyword "biologi", "makhluk hidup", "biology", "biological" ;
+    lex:targetKind "element" ;
+    lex:target "Biology" ;
+    lex:weight "0.55"^^xsd:decimal .
+
+lex:entry_element_chemistry a lex:LexicalEntry ;
+    rdfs:label "chemistry vocabulary"@en ;
+    lex:keyword "kimia", "chemistry", "chemical" ;
+    lex:targetKind "element" ;
+    lex:target "Chemistry" ;
+    lex:weight "0.55"^^xsd:decimal .
+
+lex:entry_element_physics a lex:LexicalEntry ;
+    rdfs:label "physics vocabulary"@en ;
+    lex:keyword "fisika", "physics", "physical science" ;
+    lex:targetKind "element" ;
+    lex:target "Physics" ;
+    lex:weight "0.55"^^xsd:decimal .
+
+lex:entry_element_psychology a lex:LexicalEntry ;
+    rdfs:label "psychology vocabulary"@en ;
+    lex:keyword "psikologi", "perilaku", "psikologis", "psychology", "behavioral" ;
+    lex:targetKind "element" ;
+    lex:target "Psychology" ;
+    lex:weight "0.55"^^xsd:decimal .
+
+lex:entry_element_sociology a lex:LexicalEntry ;
+    rdfs:label "sociology vocabulary"@en ;
+    lex:keyword "sosiologi", "masyarakat", "sociology", "society" ;
+    lex:targetKind "element" ;
+    lex:target "Sociology and Anthropology" ;
+    lex:weight "0.55"^^xsd:decimal .
+
+lex:entry_element_history a lex:LexicalEntry ;
+    rdfs:label "history vocabulary"@en ;
+    lex:keyword "sejarah", "arkeologi", "history", "archaeology" ;
+    lex:targetKind "element" ;
+    lex:target "History and Archeology" ;
+    lex:weight "0.55"^^xsd:decimal .
+
+lex:entry_element_art a lex:LexicalEntry ;
+    rdfs:label "fine arts vocabulary"@en ;
+    lex:keyword "seni", "seni rupa", "fine arts", "visual arts" ;
+    lex:targetKind "element" ;
+    lex:target "Fine Arts" ;
+    lex:weight "0.55"^^xsd:decimal .
+
+lex:entry_element_language a lex:LexicalEntry ;
+    rdfs:label "foreign language vocabulary"@en ;
+    lex:keyword "bahasa asing", "menguasai bahasa", "foreign language", "language" ;
+    lex:targetKind "element" ;
+    lex:target "Foreign Language" ;
+    lex:weight "0.55"^^xsd:decimal .
+
+lex:entry_element_therapy a lex:LexicalEntry ;
+    rdfs:label "therapy and counseling vocabulary"@en ;
+    lex:keyword "terapi", "konseling", "bimbingan", "therapy", "counseling", "guidance" ;
+    lex:targetKind "element" ;
+    lex:target "Therapy and Counseling" ;
+    lex:weight "0.55"^^xsd:decimal .

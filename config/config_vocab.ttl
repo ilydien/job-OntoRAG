@@ -1,0 +1,272 @@
+@prefix : <https://www.onetcenter.org/rdf/schema/onet/> .
+@prefix career: <https://example.org/career#> .
+@prefix lex: <https://example.org/lex#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# OntoRAG application/configuration vocabulary
+# =============================================================================
+# This file defines application metadata used by the generic engine and by
+# the SWRL rule set.  Domain values (weights, thresholds, indexed rating
+# types, lexicon entries) are kept in the separate policy/lexicon files.
+
+career:RankingPolicy a owl:Class ;
+    rdfs:label "Ranking policy"@en ;
+    rdfs:comment "Policy that selects scoring components, thresholds, and ordering rules."@en .
+
+career:ScoringComponent a owl:Class ;
+    rdfs:label "Scoring component"@en ;
+    rdfs:comment "A named, weighted component of the final recommendation score."@en .
+
+career:IndexPolicy a owl:Class ;
+    rdfs:label "Index policy"@en ;
+    rdfs:comment "Policy describing which ABox facts are materialised into the retrieval index."@en .
+
+career:hasComponent a owl:ObjectProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range career:ScoringComponent ;
+    rdfs:label "has scoring component"@en .
+
+career:hasIndexPolicy a owl:ObjectProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range career:IndexPolicy ;
+    rdfs:label "has index policy"@en .
+
+career:componentType a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:ScoringComponent ;
+    rdfs:range xsd:string ;
+    rdfs:label "component type"@en .
+
+career:componentOrder a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:ScoringComponent ;
+    rdfs:range xsd:integer ;
+    rdfs:label "component order"@en .
+
+career:componentWeight a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:ScoringComponent ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "component weight"@en .
+
+career:hollandPrimaryWeight a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "Holland primary-code weight"@en .
+
+career:hollandSecondaryWeight a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "Holland secondary-code weight"@en .
+
+career:hollandTertiaryWeight a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "Holland tertiary-code weight"@en .
+
+career:elementAggregation a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:string ;
+    rdfs:label "element rating aggregation"@en ;
+    rdfs:comment "max or mean when an element has multiple indexed rating types."@en .
+
+career:lexicalNormalization a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:string ;
+    rdfs:label "lexical score normalization"@en ;
+    rdfs:comment "Currently minmax; the lexical retriever is FTS5/BM25."@en .
+
+career:policyTopK a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:integer ;
+    rdfs:label "default top-k"@en .
+
+career:candidateLimit a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:integer ;
+    rdfs:label "candidate limit"@en .
+
+career:reasoningCandidateLimit a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:integer ;
+    rdfs:label "reasoning candidate limit"@en .
+
+career:lexicalCandidateLimit a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:integer ;
+    rdfs:label "lexical candidate limit"@en .
+
+career:requireEligible a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "require logical eligibility"@en .
+
+career:strongHollandThreshold a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "strong Holland threshold"@en .
+
+career:strongElementThreshold a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "strong element threshold"@en .
+
+career:tierOrder a owl:DatatypeProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:string ;
+    rdfs:label "tier order"@en ;
+    rdfs:comment "Repeated values define the ascending tier order."@en .
+
+career:hasRuleFile a owl:DatatypeProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:string ;
+    rdfs:label "SWRL rule file"@en .
+
+career:lexiconFile a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:string ;
+    rdfs:label "lexicon file"@en .
+
+career:hasReasoningMap a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:string ;
+    rdfs:label "reasoning slice map file"@en .
+
+career:languageDefault a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:string ;
+    rdfs:label "default output language"@en .
+
+career:defaultEducation a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:string ;
+    rdfs:label "default education level"@en .
+
+career:defaultMaxJobZone a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:integer ;
+    rdfs:label "default maximum job zone"@en .
+
+career:scorePrecision a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:integer ;
+    rdfs:label "score display precision"@en .
+
+career:explanationLimit a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:integer ;
+    rdfs:label "explanation evidence limit"@en .
+
+career:directElementWeight a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "direct element-name match weight"@en .
+
+career:directElementMinLength a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:integer ;
+    rdfs:label "minimum direct element-name length"@en .
+
+career:reasonerDefault a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:string ;
+    rdfs:label "default reasoner"@en .
+
+career:indexedRatingType a owl:DatatypeProperty ;
+    rdfs:domain career:IndexPolicy ;
+    rdfs:range xsd:string ;
+    rdfs:label "indexed O*NET rating type"@en .
+
+career:requireCompleteData a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:IndexPolicy ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "require complete rating data"@en .
+
+career:minFtsTokenLength a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:IndexPolicy ;
+    rdfs:range xsd:integer ;
+    rdfs:label "minimum FTS query token length"@en .
+
+career:minElementRatings a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:IndexPolicy ;
+    rdfs:range xsd:integer ;
+    rdfs:label "minimum indexed element ratings"@en .
+
+career:ftsTokenize a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:IndexPolicy ;
+    rdfs:range xsd:string ;
+    rdfs:label "FTS5 tokenizer options"@en .
+
+career:indexVersion a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:IndexPolicy ;
+    rdfs:range xsd:string ;
+    rdfs:label "index version"@en .
+
+# -----------------------------------------------------------------------------
+# Reasoning vocabulary
+# -----------------------------------------------------------------------------
+
+career:EligibleOccupation a owl:Class ;
+    rdfs:subClassOf :Occupation ;
+    rdfs:label "eligible occupation"@en ;
+    rdfs:comment "Occupation whose minimum education and job zone are compatible with the user's constraints."@en .
+
+career:EligibleStrong a owl:Class ;
+    rdfs:subClassOf career:EligibleOccupation ;
+    rdfs:label "strongly eligible occupation"@en ;
+    rdfs:comment "Eligible occupation with a strong Holland preference match."@en .
+
+career:IneligibleOccupation a owl:Class ;
+    rdfs:subClassOf :Occupation ;
+    rdfs:label "ineligible occupation"@en .
+
+career:StrongHollandMatch a owl:Class ;
+    rdfs:subClassOf :Occupation ;
+    rdfs:label "strong Holland match"@en .
+
+career:StrongElementMatch a owl:Class ;
+    rdfs:subClassOf :Occupation ;
+    rdfs:label "strong element match"@en .
+
+career:MissingEducation a owl:Class ;
+    rdfs:subClassOf career:IneligibleOccupation ;
+    rdfs:label "missing education requirement"@en .
+
+career:MissingJobZone a owl:Class ;
+    rdfs:subClassOf career:IneligibleOccupation ;
+    rdfs:label "missing job zone requirement"@en .
+
+# -----------------------------------------------------------------------------
+# Lexicon vocabulary
+# -----------------------------------------------------------------------------
+
+lex:LexicalEntry a owl:Class ;
+    rdfs:label "lexical entry"@en ;
+    rdfs:comment "A declarative keyword or pattern that maps free text to an ontology entity."@en .
+
+lex:keyword a owl:DatatypeProperty ;
+    rdfs:domain lex:LexicalEntry ;
+    rdfs:range xsd:string ;
+    rdfs:label "keyword"@en .
+
+lex:pattern a owl:DatatypeProperty ;
+    rdfs:domain lex:LexicalEntry ;
+    rdfs:range xsd:string ;
+    rdfs:label "regular expression pattern"@en .
+
+lex:targetKind a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain lex:LexicalEntry ;
+    rdfs:range xsd:string ;
+    rdfs:label "target kind"@en ;
+    rdfs:comment "One of holland, holland_code, element, education, job_zone, or negation."@en .
+
+lex:target a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain lex:LexicalEntry ;
+    rdfs:range xsd:string ;
+    rdfs:label "target"@en .
+
+lex:weight a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain lex:LexicalEntry ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "lexicon weight"@en .

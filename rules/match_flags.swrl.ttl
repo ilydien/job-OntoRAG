@@ -1,0 +1,77 @@
+@prefix : <https://www.onetcenter.org/rdf/schema/onet/> .
+@prefix career: <https://example.org/career#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix swrl: <http://www.w3.org/2003/11/swrl#> .
+@prefix swrlb: <http://www.w3.org/2003/11/swrlb#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# Match flags
+# =============================================================================
+# Strong Holland match is a logical flag derived from policy thresholds.  The
+# generic Python scorer handles continuous element/lexical scores.
+
+career:matchVarPolicy a swrl:Variable ;
+    rdfs:label "ranking policy" .
+
+career:matchVarUser a swrl:Variable ;
+    rdfs:label "user" .
+
+career:matchVarPreference a swrl:Variable ;
+    rdfs:label "Holland preference" .
+
+career:matchVarCode a swrl:Variable ;
+    rdfs:label "Holland code" .
+
+career:matchVarWeight a swrl:Variable ;
+    rdfs:label "preference weight" .
+
+career:matchVarThreshold a swrl:Variable ;
+    rdfs:label "strong Holland threshold" .
+
+career:matchVarOccupation a swrl:Variable ;
+    rdfs:label "occupation" .
+
+career:StrongHollandMatchRule a swrl:Imp ;
+    rdfs:label "Strong Holland match"@en ;
+    rdfs:comment "An occupation has a strong Holland match when one of the user's Holland preferences has a weight at least the policy threshold and the occupation's primary Holland code equals that preference."@en ;
+    swrl:body (
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate career:RankingPolicy ;
+          swrl:argument1 career:matchVarPolicy ]
+        [ a swrl:DatavaluedPropertyAtom ;
+          swrl:propertyPredicate career:strongHollandThreshold ;
+          swrl:argument1 career:matchVarPolicy ;
+          swrl:argument2 career:matchVarThreshold ]
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate career:User ;
+          swrl:argument1 career:matchVarUser ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate career:hasHollandPreference ;
+          swrl:argument1 career:matchVarUser ;
+          swrl:argument2 career:matchVarPreference ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate career:preferenceHollandCode ;
+          swrl:argument1 career:matchVarPreference ;
+          swrl:argument2 career:matchVarCode ]
+        [ a swrl:DatavaluedPropertyAtom ;
+          swrl:propertyPredicate career:preferenceWeight ;
+          swrl:argument1 career:matchVarPreference ;
+          swrl:argument2 career:matchVarWeight ]
+        [ a swrl:BuiltinAtom ;
+          swrl:builtin swrlb:greaterThanOrEqual ;
+          swrl:arguments ( career:matchVarWeight career:matchVarThreshold ) ]
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate :Occupation ;
+          swrl:argument1 career:matchVarOccupation ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate career:hasPrimaryHollandCode ;
+          swrl:argument1 career:matchVarOccupation ;
+          swrl:argument2 career:matchVarCode ]
+    ) ;
+    swrl:head (
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate career:StrongHollandMatch ;
+          swrl:argument1 career:matchVarOccupation ]
+    ) .

@@ -1,0 +1,175 @@
+@prefix : <https://www.onetcenter.org/rdf/schema/onet/> .
+@prefix career: <https://example.org/career#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix swrl: <http://www.w3.org/2003/11/swrl#> .
+@prefix swrlb: <http://www.w3.org/2003/11/swrlb#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# Eligibility rules
+# =============================================================================
+# These rules operate on a small profile-time slice.  They never see the
+# complete O*NET ABox.  The rules produce logical eligibility classes; they do
+# not calculate weighted scores or rankings.
+
+career:var_user a swrl:Variable ;
+    rdfs:label "user" .
+
+career:var_occupation a swrl:Variable ;
+    rdfs:label "occupation" .
+
+career:var_user_education a swrl:Variable ;
+    rdfs:label "user education level" .
+
+career:var_required_education a swrl:Variable ;
+    rdfs:label "required education level" .
+
+career:var_user_education_order a swrl:Variable ;
+    rdfs:label "user education order" .
+
+career:var_required_education_order a swrl:Variable ;
+    rdfs:label "required education order" .
+
+career:var_max_job_zone a swrl:Variable ;
+    rdfs:label "maximum user job zone" .
+
+career:var_job_zone_rating a swrl:Variable ;
+    rdfs:label "job zone rating" .
+
+career:var_job_zone a swrl:Variable ;
+    rdfs:label "job zone" .
+
+career:var_job_zone_number a swrl:Variable ;
+    rdfs:label "job zone number" .
+
+career:EligibilityByEducationAndJobZone a swrl:Imp ;
+    rdfs:label "Eligibility from education order and job zone"@en ;
+    rdfs:comment "An occupation is eligible when the user's education order is at least the occupation's minimum education order and the occupation's job zone is within the user's maximum job zone."@en ;
+    swrl:body (
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate career:User ;
+          swrl:argument1 career:var_user ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate career:hasEducationLevel ;
+          swrl:argument1 career:var_user ;
+          swrl:argument2 career:var_user_education ]
+        [ a swrl:DatavaluedPropertyAtom ;
+          swrl:propertyPredicate career:levelOrder ;
+          swrl:argument1 career:var_user_education ;
+          swrl:argument2 career:var_user_education_order ]
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate :Occupation ;
+          swrl:argument1 career:var_occupation ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate career:hasMinEducationLevel ;
+          swrl:argument1 career:var_occupation ;
+          swrl:argument2 career:var_required_education ]
+        [ a swrl:DatavaluedPropertyAtom ;
+          swrl:propertyPredicate career:levelOrder ;
+          swrl:argument1 career:var_required_education ;
+          swrl:argument2 career:var_required_education_order ]
+        [ a swrl:BuiltinAtom ;
+          swrl:builtin swrlb:greaterThanOrEqual ;
+          swrl:arguments ( career:var_user_education_order career:var_required_education_order ) ]
+        [ a swrl:DatavaluedPropertyAtom ;
+          swrl:propertyPredicate career:maxJobZone ;
+          swrl:argument1 career:var_user ;
+          swrl:argument2 career:var_max_job_zone ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate :hasRating ;
+          swrl:argument1 career:var_occupation ;
+          swrl:argument2 career:var_job_zone_rating ]
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate :JobZoneRating ;
+          swrl:argument1 career:var_job_zone_rating ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate :ratedJobZone ;
+          swrl:argument1 career:var_job_zone_rating ;
+          swrl:argument2 career:var_job_zone ]
+        [ a swrl:DatavaluedPropertyAtom ;
+          swrl:propertyPredicate :jobZone ;
+          swrl:argument1 career:var_job_zone ;
+          swrl:argument2 career:var_job_zone_number ]
+        [ a swrl:BuiltinAtom ;
+          swrl:builtin swrlb:lessThanOrEqual ;
+          swrl:arguments ( career:var_job_zone_number career:var_max_job_zone ) ]
+    ) ;
+    swrl:head (
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate career:EligibleOccupation ;
+          swrl:argument1 career:var_occupation ]
+    ) .
+
+career:MissingEducationRule a swrl:Imp ;
+    rdfs:label "Missing education requirement"@en ;
+    swrl:body (
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate career:User ;
+          swrl:argument1 career:var_user ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate career:hasEducationLevel ;
+          swrl:argument1 career:var_user ;
+          swrl:argument2 career:var_user_education ]
+        [ a swrl:DatavaluedPropertyAtom ;
+          swrl:propertyPredicate career:levelOrder ;
+          swrl:argument1 career:var_user_education ;
+          swrl:argument2 career:var_user_education_order ]
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate :Occupation ;
+          swrl:argument1 career:var_occupation ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate career:hasMinEducationLevel ;
+          swrl:argument1 career:var_occupation ;
+          swrl:argument2 career:var_required_education ]
+        [ a swrl:DatavaluedPropertyAtom ;
+          swrl:propertyPredicate career:levelOrder ;
+          swrl:argument1 career:var_required_education ;
+          swrl:argument2 career:var_required_education_order ]
+        [ a swrl:BuiltinAtom ;
+          swrl:builtin swrlb:lessThan ;
+          swrl:arguments ( career:var_user_education_order career:var_required_education_order ) ]
+    ) ;
+    swrl:head (
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate career:MissingEducation ;
+          swrl:argument1 career:var_occupation ]
+    ) .
+
+career:MissingJobZoneRule a swrl:Imp ;
+    rdfs:label "Missing job-zone requirement"@en ;
+    swrl:body (
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate career:User ;
+          swrl:argument1 career:var_user ]
+        [ a swrl:DatavaluedPropertyAtom ;
+          swrl:propertyPredicate career:maxJobZone ;
+          swrl:argument1 career:var_user ;
+          swrl:argument2 career:var_max_job_zone ]
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate :Occupation ;
+          swrl:argument1 career:var_occupation ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate :hasRating ;
+          swrl:argument1 career:var_occupation ;
+          swrl:argument2 career:var_job_zone_rating ]
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate :JobZoneRating ;
+          swrl:argument1 career:var_job_zone_rating ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate :ratedJobZone ;
+          swrl:argument1 career:var_job_zone_rating ;
+          swrl:argument2 career:var_job_zone ]
+        [ a swrl:DatavaluedPropertyAtom ;
+          swrl:propertyPredicate :jobZone ;
+          swrl:argument1 career:var_job_zone ;
+          swrl:argument2 career:var_job_zone_number ]
+        [ a swrl:BuiltinAtom ;
+          swrl:builtin swrlb:greaterThan ;
+          swrl:arguments ( career:var_job_zone_number career:var_max_job_zone ) ]
+    ) ;
+    swrl:head (
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate career:MissingJobZone ;
+          swrl:argument1 career:var_occupation ]
+    ) .

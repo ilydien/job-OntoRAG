@@ -1,0 +1,33 @@
+@prefix : <https://www.onetcenter.org/rdf/schema/onet/> .
+@prefix career: <https://example.org/career#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix swrl: <http://www.w3.org/2003/11/swrl#> .
+@prefix swrlb: <http://www.w3.org/2003/11/swrlb#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# Eligibility tier
+# =============================================================================
+# Tier is logical eligibility strength, not a subjective quality grade.
+# Python sorts by this tier first and by the generic score second.
+
+career:tierVarOccupation a swrl:Variable ;
+    rdfs:label "occupation" .
+
+career:EligibleStrongRule a swrl:Imp ;
+    rdfs:label "Eligible strong tier"@en ;
+    rdfs:comment "A strongly eligible occupation is eligible and has a strong Holland match."@en ;
+    swrl:body (
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate career:EligibleOccupation ;
+          swrl:argument1 career:tierVarOccupation ]
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate career:StrongHollandMatch ;
+          swrl:argument1 career:tierVarOccupation ]
+    ) ;
+    swrl:head (
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate career:EligibleStrong ;
+          swrl:argument1 career:tierVarOccupation ]
+    ) .

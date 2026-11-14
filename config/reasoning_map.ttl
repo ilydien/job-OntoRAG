@@ -1,0 +1,54 @@
+@prefix : <https://www.onetcenter.org/rdf/schema/onet/> .
+@prefix career: <https://example.org/career#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# =============================================================================
+# Reasoning slice mapping
+# =============================================================================
+# The index row -> ontology-slice property mapping is declarative, so the
+# profile-time bundle builder does not contain career-domain field mappings.
+# The SWRL rules consume the resulting slice in the same ontology vocabulary.
+
+career:ReasoningSliceMap a owl:Class ;
+    rdfs:label "Reasoning slice mapping"@en ;
+    rdfs:comment "Maps index row fields to the ontology properties used in the profile-time candidate slice."@en .
+
+career:sliceOccupationClass a owl:Class ;
+    rdfs:label "slice occupation class"@en .
+
+career:sliceJobZoneClass a owl:Class ;
+    rdfs:label "slice job-zone class"@en .
+
+career:sliceHollandNamespace a owl:DatatypeProperty ;
+    rdfs:label "slice Holland code namespace"@en .
+
+career:sliceEducationProperty a owl:ObjectProperty ;
+    rdfs:label "slice education property"@en .
+
+career:sliceHollandProperty a owl:ObjectProperty ;
+    rdfs:label "slice Holland property"@en .
+
+career:sliceRatingProperty a owl:ObjectProperty ;
+    rdfs:label "slice rating property"@en .
+
+career:sliceJobZoneRatingClass a owl:Class ;
+    rdfs:label "slice job-zone rating class"@en .
+
+career:sliceRatedJobZoneProperty a owl:ObjectProperty ;
+    rdfs:label "slice rated job-zone property"@en .
+
+career:sliceJobZoneProperty a owl:ObjectProperty ;
+    rdfs:label "slice job-zone number property"@en .
+
+career:DefaultReasoningSliceMap a career:ReasoningSliceMap ;
+    rdfs:label "Default reasoning slice mapping"@en ;
+    career:sliceOccupationClass :Occupation ;
+    career:sliceJobZoneClass :JobZone ;
+    career:sliceHollandNamespace "https://example.org/career#" ;
+    career:sliceEducationProperty career:hasMinEducationLevel ;
+    career:sliceHollandProperty career:hasPrimaryHollandCode ;
+    career:sliceRatingProperty :hasRating ;
+    career:sliceJobZoneRatingClass :JobZoneRating ;
+    career:sliceRatedJobZoneProperty :ratedJobZone ;
+    career:sliceJobZoneProperty :jobZone .

@@ -1,0 +1,18 @@
+@prefix : <https://www.onetcenter.org/rdf/schema/onet/> .
+@prefix career: <https://example.org/career#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+career:DefaultIndexPolicy a career:IndexPolicy ;
+    rdfs:label "Default O*NET retrieval index policy"@en ;
+    career:indexedRatingType "AbilitiesRating" ;
+    career:indexedRatingType "WorkActivitiesRating" ;
+    career:indexedRatingType "KnowledgeRating" ;
+    career:indexedRatingType "EssentialSkillsRating" ;
+    career:indexedRatingType "TransferableSkillsRating" ;
+    career:indexedRatingType "SpecificInterestAreasRating" ;
+    career:requireCompleteData true ;
+    career:minElementRatings 0 ;
+    career:minFtsTokenLength 2 ;
+    career:ftsTokenize "unicode61 remove_diacritics 2" ;
+    career:indexVersion "1" .

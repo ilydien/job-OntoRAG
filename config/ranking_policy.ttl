@@ -1,0 +1,57 @@
+@prefix : <https://www.onetcenter.org/rdf/schema/onet/> .
+@prefix career: <https://example.org/career#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+career:DefaultRankingPolicy a career:RankingPolicy ;
+    rdfs:label "Default OntoRAG ranking policy"@en ;
+    career:policyTopK 10 ;
+    career:candidateLimit 250 ;
+    career:reasoningCandidateLimit 60 ;
+    career:lexicalCandidateLimit 300 ;
+    career:requireEligible true ;
+    career:strongHollandThreshold "0.70"^^xsd:decimal ;
+    career:strongElementThreshold "0.65"^^xsd:decimal ;
+    career:hollandPrimaryWeight "1.0"^^xsd:decimal ;
+    career:hollandSecondaryWeight "0.5"^^xsd:decimal ;
+    career:hollandTertiaryWeight "0.3"^^xsd:decimal ;
+    career:elementAggregation "max" ;
+    career:lexicalNormalization "minmax" ;
+    career:tierOrder "EligibleStrong" ;
+    career:tierOrder "Eligible" ;
+    career:tierOrder "NotEligible" ;
+    career:languageDefault "id" ;
+    career:defaultEducation "S1" ;
+    career:defaultMaxJobZone 5 ;
+    career:scorePrecision 4 ;
+    career:explanationLimit 5 ;
+    career:directElementWeight "0.35"^^xsd:decimal ;
+    career:directElementMinLength 4 ;
+    career:reasonerDefault "auto" ;
+    career:lexiconFile "config/lexicon.ttl" ;
+    career:hasIndexPolicy career:DefaultIndexPolicy ;
+    career:hasReasoningMap "config/reasoning_map.ttl" ;
+    career:hasRuleFile "rules/eligibility.swrl.ttl" ;
+    career:hasRuleFile "rules/match_flags.swrl.ttl" ;
+    career:hasRuleFile "rules/tier.swrl.ttl" ;
+    career:hasComponent career:HollandComponent ;
+    career:hasComponent career:ElementComponent ;
+    career:hasComponent career:LexicalComponent .
+
+career:HollandComponent a career:ScoringComponent ;
+    rdfs:label "Holland/RIASEC alignment"@en ;
+    career:componentOrder 10 ;
+    career:componentType "holland" ;
+    career:componentWeight "0.50"^^xsd:decimal .
+
+career:ElementComponent a career:ScoringComponent ;
+    rdfs:label "O*NET element alignment"@en ;
+    career:componentOrder 20 ;
+    career:componentType "element" ;
+    career:componentWeight "0.35"^^xsd:decimal .
+
+career:LexicalComponent a career:ScoringComponent ;
+    rdfs:label "Lexical FTS5/BM25 alignment"@en ;
+    career:componentOrder 30 ;
+    career:componentType "lexical" ;
+    career:componentWeight "0.15"^^xsd:decimal .

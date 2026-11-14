@@ -1,0 +1,13 @@
+# OntoRAG terminal prototype
+#
+# Python 3.11+ is recommended.  SQLite must be built with FTS5 support
+# (the CPython binaries normally are).
+#
+# rdflib is used only to assemble the small RDF/XML reasoning bundle that is
+# handed to owlready2/Pellet.
+rdflib>=7.0,<8
+
+# Pellet is bundled with owlready2.  Pin 0.48: its bundled Pellet works with
+# Java 21 in this project, while owlready2 0.51's bundled Jena jars require a
+# newer Java class-file version.  Pellet also needs a Java runtime.
+owlready2==0.48
