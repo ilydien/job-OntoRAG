@@ -78,7 +78,19 @@ class ExtractionTests(unittest.TestCase):
         self.assertIn("Investigative", profile.holland)
         self.assertNotIn("Realistic", profile.holland)
         self.assertIn("urn:element:data", profile.elements)
+        self.assertIn("urn:element:programming", profile.elements)
         self.assertNotIn("urn:element:building", profile.elements)
+
+    def test_software_keyword_maps_to_programming(self) -> None:
+        profile = extract_from_text(
+            "Saya suka software dan developer aplikasi.",
+            self.ontology,
+            self.lexicon,
+            self.catalog,
+            direct_element_weight=self.policy.direct_element_weight,
+            direct_element_min_length=self.policy.direct_element_min_length,
+        )
+        self.assertIn("urn:element:programming", profile.elements)
 
     def test_build_house_stays_realistic_and_construction(self) -> None:
         profile = extract_from_text(

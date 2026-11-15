@@ -165,7 +165,10 @@ Two ranking defects were found and fixed:
    Building and Construction). New vocabulary adds `model`, `pemodelan`,
    `statistik`, `algoritma`, `machine learning`, `pemrograman`, `python`,
    and `sql`, plus the elements *Analyzing Data or Information* and
-   *Programming*.
+   *Programming*. The phrase `membangun model`/`membangun algoritma` also
+   maps to the *Programming* element, which separates computational
+   modeling from the analytical work that detectives and survey researchers
+   also score highly on.
 
 Element ratings for the whole pool are now fetched with one batched query
 (`Index.elements_for_many`, filtered to the profile's elements) instead of one

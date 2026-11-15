@@ -238,7 +238,7 @@ lex:entry_element_coordination a lex:LexicalEntry ;
 
 lex:entry_element_programming a lex:LexicalEntry ;
     rdfs:label "programming vocabulary"@en ;
-    lex:keyword "pemrograman", "coding", "program komputer", "software", "programming", "developer", "application" ;
+    lex:keyword "pemrograman", "coding", "program komputer", "software", "programming", "developer", "application", "python", "sql", "machine learning", "pembelajaran mesin" ;
     lex:targetKind "element" ;
     lex:target "Programming" ;
     lex:weight "0.65"^^xsd:decimal .
@@ -278,9 +278,16 @@ lex:entry_element_data_analysis a lex:LexicalEntry ;
     lex:target "Analyzing Data or Information" ;
     lex:weight "0.60"^^xsd:decimal .
 
-lex:entry_element_programming a lex:LexicalEntry ;
-    rdfs:label "programming vocabulary"@en ;
-    lex:keyword "pemrograman", "programming", "coding", "python", "sql", "machine learning", "pembelajaran mesin" ;
+lex:entry_element_modeling a lex:LexicalEntry ;
+    rdfs:label "computational modeling vocabulary"@en ;
+    lex:keyword "pemodelan", "algoritma", "model statistik", "model matematika", "simulasi" ;
+    lex:targetKind "element" ;
+    lex:target "Programming" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_modeling_phrase a lex:LexicalEntry ;
+    rdfs:label "building a model (computational)"@en ;
+    lex:pattern "\\bmembangun\\s+(?:model|algoritma)\\b" ;
     lex:targetKind "element" ;
     lex:target "Programming" ;
     lex:weight "0.60"^^xsd:decimal .
