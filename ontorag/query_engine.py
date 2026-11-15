@@ -154,5 +154,22 @@ class Index:
     def profile_context(self) -> List[dict]:
         return [dict(row) for row in self.query("profile_context.sql")]
 
+    def embedding_occupations(self) -> List[dict]:
+        return [dict(row) for row in self.query("embedding_occupations.sql")]
+
+    def embedding_rows(self) -> List[sqlite3.Row]:
+        try:
+            return self.query("embedding_rows.sql")
+        except sqlite3.OperationalError:
+            # Indexes built before semantic retrieval was added have no table.
+            return []
+
+    def embedding_meta(self) -> Dict[str, str]:
+        try:
+            rows = self.query("embedding_meta.sql")
+        except sqlite3.OperationalError:
+            return {}
+        return {str(row["key"]): str(row["value"]) for row in rows}
+
     def element_catalog_rows(self) -> List[dict]:
         return [dict(row) for row in self.query("element_catalog.sql")]

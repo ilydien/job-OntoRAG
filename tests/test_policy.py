@@ -12,9 +12,13 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(policy.default_max_job_zone, 5)
         self.assertTrue(policy.require_eligible)
         self.assertEqual(policy.tier_order, ["EligibleStrong", "Eligible", "NotEligible"])
-        self.assertAlmostEqual(policy.component_weights["holland"], 0.50)
-        self.assertAlmostEqual(policy.component_weights["element"], 0.35)
+        self.assertAlmostEqual(policy.component_weights["holland"], 0.45)
+        self.assertAlmostEqual(policy.component_weights["element"], 0.30)
+        self.assertAlmostEqual(policy.component_weights["semantic"], 0.25)
         self.assertAlmostEqual(policy.component_weights["lexical"], 0.15)
+        self.assertEqual(policy.retrieval_mode, "auto")
+        self.assertEqual(policy.semantic_normalization, "minmax")
+        self.assertGreater(policy.semantic_candidate_limit, 0)
         self.assertEqual(len(policy.rule_files), 3)
         self.assertTrue(policy.reasoning_map_file.exists())
 
@@ -24,6 +28,9 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(policy.min_fts_token_length, 2)
         self.assertIn("KnowledgeRating", policy.indexed_rating_types)
         self.assertIn("AbilitiesRating", policy.indexed_rating_types)
+        self.assertEqual(policy.embedding_model, "intfloat/multilingual-e5-small")
+        self.assertGreater(policy.embedding_max_tasks, 0)
+        self.assertGreater(policy.embedding_max_elements, 0)
 
 
 if __name__ == "__main__":

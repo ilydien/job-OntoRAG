@@ -23,7 +23,7 @@ def _add_common_data_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--lexicon", default=None, help="lexicon TTL")
 
 
-def _pipeline(args: argparse.Namespace, reasoner_mode: str) -> Pipeline:
+def _pipeline(args: argparse.Namespace, reasoner_mode: str, retrieval: Optional[str] = None) -> Pipeline:
     return Pipeline.from_paths(
         index_path=args.index,
         schema_path=args.schema,
@@ -32,6 +32,8 @@ def _pipeline(args: argparse.Namespace, reasoner_mode: str) -> Pipeline:
         index_policy_path=args.index_policy,
         lexicon_path=args.lexicon,
         reasoner_mode=reasoner_mode,
+        retrieval=retrieval or getattr(args, "retrieval", None),
+        embedding_model=getattr(args, "embedding_model", None),
     )
 
 
@@ -49,6 +51,45 @@ def cmd_build_index(args: argparse.Namespace) -> int:
         index_policy=args.index_policy,
         verbose=not args.quiet,
     )
+    if args.with_embeddings:
+        from .embeddings import CardLimits, build_embeddings
+        from .policy import load_index_policy
+
+        policy = load_index_policy(args.index_policy)
+        build_embeddings(
+            index_path=index_path,
+            model_name=args.embedding_model or policy.embedding_model,
+            batch_size=policy.embedding_batch_size,
+            limits=CardLimits(
+                max_tasks=policy.embedding_max_tasks,
+                max_elements=policy.embedding_max_elements,
+                max_job_titles=policy.embedding_max_job_titles,
+            ),
+            verbose=not args.quiet,
+        )
+    return 0
+
+
+def cmd_build_embeddings(args: argparse.Namespace) -> int:
+    from .embeddings import CardLimits, build_embeddings
+    from .policy import load_index_policy
+
+    policy = load_index_policy(args.index_policy)
+    meta = build_embeddings(
+        index_path=args.index,
+        model_name=args.model or policy.embedding_model,
+        batch_size=args.batch_size or policy.embedding_batch_size,
+        rebuild=args.rebuild,
+        limits=CardLimits(
+            max_tasks=policy.embedding_max_tasks,
+            max_elements=policy.embedding_max_elements,
+            max_job_titles=policy.embedding_max_job_titles,
+        ),
+        verbose=not args.quiet,
+    )
+    for key in ("model", "dim", "count", "built_at", "index_fingerprint"):
+        if key in meta:
+            print(f"{key}: {meta[key]}")
     return 0
 
 
@@ -57,14 +98,17 @@ def cmd_show_meta(args: argparse.Namespace) -> int:
 
     with Index(args.index) as index:
         meta = index.meta()
+        embedding_meta = index.embedding_meta()
     for key, value in meta.items():
         print(f"{key}: {value}")
+    for key, value in sorted(embedding_meta.items()):
+        print(f"embedding.{key}: {value}")
     return 0
 
 
 def cmd_extract(args: argparse.Namespace) -> int:
     reasoner_mode = "sql"
-    with _pipeline(args, reasoner_mode) as pipeline:
+    with _pipeline(args, reasoner_mode, retrieval="lexical") as pipeline:
         if args.profile:
             profile = pipeline.profile_from_json(args.profile, text=args.text, language=args.language)
         else:
@@ -176,7 +220,24 @@ def build_parser() -> argparse.ArgumentParser:
     build.add_argument("--index-policy", default=str(config.DEFAULT_INDEX_POLICY), help="index policy TTL")
     build.add_argument("--rebuild", action="store_true", help="replace an existing index")
     build.add_argument("--quiet", action="store_true", help="suppress progress output")
+    build.add_argument(
+        "--with-embeddings",
+        action="store_true",
+        help="build occupation-card embeddings after the index",
+    )
+    build.add_argument("--embedding-model", default=None, help="sentence-transformers model id")
     build.set_defaults(func=cmd_build_index)
+
+    embeddings = sub.add_parser(
+        "build-embeddings", help="embed occupation cards into the SQLite index"
+    )
+    embeddings.add_argument("--index", default=str(config.DEFAULT_INDEX), help="SQLite index path")
+    embeddings.add_argument("--index-policy", default=str(config.DEFAULT_INDEX_POLICY), help="index policy TTL")
+    embeddings.add_argument("--model", default=None, help="sentence-transformers model id")
+    embeddings.add_argument("--batch-size", type=int, default=None, help="embedding batch size")
+    embeddings.add_argument("--rebuild", action="store_true", help="recompute all vectors")
+    embeddings.add_argument("--quiet", action="store_true", help="suppress progress output")
+    embeddings.set_defaults(func=cmd_build_embeddings)
 
     meta = sub.add_parser("show-meta", help="show index metadata")
     meta.add_argument("--index", default=str(config.DEFAULT_INDEX), help="SQLite index path")
@@ -202,6 +263,13 @@ def build_parser() -> argparse.ArgumentParser:
     recommend.add_argument("--format", choices=["table", "json", "ttl"], default="table")
     recommend.add_argument("--language", choices=["id", "en"], default=None)
     recommend.add_argument("--reasoner", choices=["auto", "pellet", "sql"], default=None)
+    recommend.add_argument(
+        "--retrieval",
+        choices=["auto", "semantic", "lexical", "hybrid"],
+        default=None,
+        help="candidate retrieval mode (default: ranking policy)",
+    )
+    recommend.add_argument("--embedding-model", default=None, help="sentence-transformers model id")
     recommend.add_argument("--user-iri", default=None)
     recommend.add_argument("--out", default=None, help="write output to a file")
     _add_common_data_args(recommend)

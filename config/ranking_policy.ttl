@@ -17,6 +17,9 @@ career:DefaultRankingPolicy a career:RankingPolicy ;
     career:hollandTertiaryWeight "0.3"^^xsd:decimal ;
     career:elementAggregation "max" ;
     career:lexicalNormalization "minmax" ;
+    career:semanticNormalization "minmax" ;
+    career:semanticCandidateLimit 300 ;
+    career:retrievalMode "auto" ;
     career:tierOrder "EligibleStrong" ;
     career:tierOrder "Eligible" ;
     career:tierOrder "NotEligible" ;
@@ -36,22 +39,29 @@ career:DefaultRankingPolicy a career:RankingPolicy ;
     career:hasRuleFile "rules/tier.swrl.ttl" ;
     career:hasComponent career:HollandComponent ;
     career:hasComponent career:ElementComponent ;
+    career:hasComponent career:SemanticComponent ;
     career:hasComponent career:LexicalComponent .
 
 career:HollandComponent a career:ScoringComponent ;
     rdfs:label "Holland/RIASEC alignment"@en ;
     career:componentOrder 10 ;
     career:componentType "holland" ;
-    career:componentWeight "0.50"^^xsd:decimal .
+    career:componentWeight "0.45"^^xsd:decimal .
 
 career:ElementComponent a career:ScoringComponent ;
     rdfs:label "O*NET element alignment"@en ;
     career:componentOrder 20 ;
     career:componentType "element" ;
-    career:componentWeight "0.35"^^xsd:decimal .
+    career:componentWeight "0.30"^^xsd:decimal .
+
+career:SemanticComponent a career:ScoringComponent ;
+    rdfs:label "Occupation-card embedding similarity"@en ;
+    career:componentOrder 30 ;
+    career:componentType "semantic" ;
+    career:componentWeight "0.25"^^xsd:decimal .
 
 career:LexicalComponent a career:ScoringComponent ;
     rdfs:label "Lexical FTS5/BM25 alignment"@en ;
-    career:componentOrder 30 ;
+    career:componentOrder 40 ;
     career:componentType "lexical" ;
     career:componentWeight "0.15"^^xsd:decimal .

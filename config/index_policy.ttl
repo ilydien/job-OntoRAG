@@ -15,4 +15,10 @@ career:DefaultIndexPolicy a career:IndexPolicy ;
     career:minElementRatings 0 ;
     career:minFtsTokenLength 2 ;
     career:ftsTokenize "unicode61 remove_diacritics 2" ;
+    career:embeddingModel "intfloat/multilingual-e5-small" ;
+    career:embeddingBatchSize 32 ;
+    career:embeddingMaxTasks 8 ;
+    career:embeddingMaxElements 12 ;
+    career:embeddingMaxJobTitles 5 ;
+    career:embeddingCardVersion "1" ;
     career:indexVersion "1" .

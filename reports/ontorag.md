@@ -134,17 +134,73 @@ The SQL path is the low-latency mode. Pellet is the tier-aware mode.
 python3 -m unittest discover -s tests -v
 ```
 
-- System Python (no owlready2): 26 pass, 1 skipped (Pellet test).
-- `owlready2==0.48` environment with Java 21: 27 pass, including the
+- System Python (no owlready2): 43 pass, 1 skipped (Pellet test).
+- `owlready2==0.48` environment with Java 21: 44 pass, including the
   end-to-end Pellet/SWRL tier test.
 
 The suite covers the streaming parser, policy loading, lexicon and negation,
 profile extraction, SQLite/FTS5 schema and candidate filters, scoring and tier
-sorting, SQL fallback, CLI JSON output, and the optional Pellet path.
+sorting, SQL fallback, CLI JSON output, occupation-card building, the
+deterministic embedding backend, semantic retrieval/fallback, and the optional
+Pellet path.
+
+## Semantic retrieval (occupation-card embeddings)
+
+Retrieval has a dense path alongside FTS5/BM25:
+
+1. `build-index` creates the SQLite tables `occupation_embeddings` and
+   `embedding_meta` (empty).
+2. `build-embeddings` reads the indexed occupations and composes one
+   **occupation card** per row: title (EN/ID), description, up to
+   `embeddingMaxTasks` tasks, up to `embeddingMaxElements` elements ordered by
+   normalised rating, RIASEC/interest labels, and up to
+   `embeddingMaxJobTitles` alternative titles. Cards are text only; the ABox is
+   never parsed again.
+3. Cards are encoded with the policy model (`intfloat/multilingual-e5-small`
+   by default, "query: "/"passage: " prefixes, 384 dimensions) and stored as
+   L2-normalised `float32` blobs. Cosine similarity is therefore a dot product.
+4. At query time `ontorag.retrieval.SemanticRetriever` encodes the profile text
+   and scores only the occupations that pass the structured filter. Ranking
+   remains deterministic in `ontorag.scoring`.
+
+```bash
+pip install -r requirements-embed.txt
+python3 -m ontorag.cli build-embeddings --index data/onet_index.sqlite
+python3 -m ontorag.cli recommend --index data/onet_index.sqlite \
+  --text "Saya suka menganalisis data dan membangun model" --retrieval semantic
+```
+
+Retrieval modes:
+
+| Mode | Behaviour |
+| --- | --- |
+| `auto` (default) | Semantic when the index has matching vectors and the model loads, otherwise lexical with an explicit warning. |
+| `semantic` | Cosine similarity only; missing/mismatched vectors raise `EmbeddingIndexMismatch`. |
+| `lexical` | The previous FTS5/BM25 path. |
+| `hybrid` | Both components are computed; the policy weights decide the mix. |
+
+Component weights are now `holland 0.45 + element 0.30 + semantic 0.25 +
+lexical 0.15`; `score_candidates` renormalises over the components that were
+actually computed, so the lexical and semantic paths stay comparable.
+
+Provenance is stored in `embedding_meta` (`model`, `dim`, prefixes, card
+version, build time, vector count, and an index fingerprint) and is shown by
+`show-meta` as `embedding.*` keys. A model or dimension mismatch is a hard
+error, never a silent score change.
+
+The new suite (`tests/test_embeddings.py`, `tests/test_retrieval.py`) uses a
+deterministic keyword backend, so it runs without `torch` or network access:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
 
 ## Remaining limitations
 
-- Retrieval is lexical (FTS5/BM25), not semantic.
+- Retrieval now has a semantic path, but the full-data build was not executed
+  in this change: no numbers for embedding build time, vector-table size, or
+  Recall@k/MRR/nDCG are reported yet. The 44-test suite (1 skipped Pellet test)
+  covers the plumbing with a deterministic test backend.
 - Only the reasoning shortlist receives explicit SWRL flags. Candidates outside
   the shortlist keep the SQL eligibility default, so they cannot become
   `EligibleStrong`.

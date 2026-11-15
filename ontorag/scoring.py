@@ -116,6 +116,12 @@ def normalize_lexical(
     candidate_iris: Iterable[str],
     method: str = "minmax",
 ) -> Dict[str, float]:
+    """Normalise a sparse retrieval score map over the candidate set.
+
+    The same min-max rule is used for lexical (BM25) and semantic (cosine)
+    evidence so that policy weights stay comparable.
+    """
+
     candidates = list(candidate_iris)
     if not lexical_scores:
         return {}
@@ -154,14 +160,28 @@ def score_candidates(
     lexical_scores: Optional[Mapping[str, float]] = None,
     reasoning_flags: Optional[Mapping[str, Mapping[str, object]]] = None,
     top_k: Optional[int] = None,
+    semantic_scores: Optional[Mapping[str, float]] = None,
+    semantic_normalization: Optional[str] = None,
 ) -> List[Recommendation]:
-    """Score and rank candidate rows."""
+    """Score and rank candidate rows.
+
+    Retrieval evidence is optional: ``semantic_scores`` (cosine similarity)
+    and ``lexical_scores`` (BM25) are only added to a row when the caller
+    computed them for this request.  Relative component weights are
+    renormalised over the components that are actually available.
+    """
 
     lexical_scores = lexical_scores or {}
+    semantic_scores = semantic_scores or {}
     reasoning_flags = reasoning_flags or {}
     candidate_iris = [str(row["iri"]) for row in candidates]
     normalized_lexical = normalize_lexical(
         lexical_scores, candidate_iris, policy.lexical_normalization
+    )
+    normalized_semantic = normalize_lexical(
+        semantic_scores,
+        candidate_iris,
+        semantic_normalization or policy.semantic_normalization,
     )
     weights = {component.component_type: component.weight for component in policy.components}
     recommendations: List[Recommendation] = []
@@ -178,6 +198,8 @@ def score_candidates(
             component_values["element"] = element
         if lexical_scores:
             component_values["lexical"] = normalized_lexical.get(iri, 0.0)
+        if semantic_scores:
+            component_values["semantic"] = normalized_semantic.get(iri, 0.0)
 
         available_weight = sum(weights.get(name, 0.0) for name in component_values)
         if available_weight > 0:

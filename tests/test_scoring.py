@@ -60,6 +60,54 @@ class ScoringTests(unittest.TestCase):
         self.assertAlmostEqual(normalized["c"], 0.0)
         self.assertEqual(normalize_lexical({"a": 2.0}, ["a"]), {"a": 0.5})
 
+    def test_semantic_scores_add_normalised_component(self) -> None:
+        rows = [
+            {
+                "iri": "urn:occupation:a",
+                "title_en": "Occupation A",
+                "holland_primary": "Investigative",
+            },
+            {
+                "iri": "urn:occupation:b",
+                "title_en": "Occupation B",
+                "holland_primary": "Investigative",
+            },
+        ]
+        recommendations = score_candidates(
+            FakeIndex(),
+            self.profile,
+            self.policy,
+            rows,
+            semantic_scores={"urn:occupation:a": 0.9, "urn:occupation:b": 0.5},
+            top_k=2,
+        )
+        by_iri = {item.occupation_iri: item for item in recommendations}
+        self.assertAlmostEqual(by_iri["urn:occupation:a"].component_scores["semantic"], 1.0)
+        self.assertAlmostEqual(by_iri["urn:occupation:b"].component_scores["semantic"], 0.0)
+        self.assertGreater(
+            by_iri["urn:occupation:a"].score, by_iri["urn:occupation:b"].score
+        )
+
+    def test_semantic_and_lexical_can_coexist_for_hybrid(self) -> None:
+        rows = [
+            {
+                "iri": "urn:occupation:a",
+                "title_en": "Occupation A",
+                "holland_primary": "Investigative",
+            }
+        ]
+        recommendations = score_candidates(
+            FakeIndex(),
+            self.profile,
+            self.policy,
+            rows,
+            lexical_scores={"urn:occupation:a": 0.4},
+            semantic_scores={"urn:occupation:a": 0.8},
+            top_k=1,
+        )
+        self.assertIn("lexical", recommendations[0].component_scores)
+        self.assertIn("semantic", recommendations[0].component_scores)
+
     def test_tier_sorting_precedes_score(self) -> None:
         rows = [
             {

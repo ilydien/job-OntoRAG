@@ -7,10 +7,39 @@ from pathlib import Path
 from typing import Optional
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+_PARENT_ROOT = PROJECT_ROOT.parent
 
-SCHEMA_EN = PROJECT_ROOT / "schema" / "onet_schema_en.ttl"
-SCHEMA_FALLBACK = PROJECT_ROOT / "onet_schema.ttl"
-ABOX = PROJECT_ROOT / "onet_abox.ttl"
+
+def _first_existing(candidates, fallback: Path) -> Path:
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return fallback
+
+
+# The application folder is self-contained in a deployed copy, while the
+# workspace keeps the generated artefacts in the sibling phase folders.
+SCHEMA_EN = _first_existing(
+    (
+        PROJECT_ROOT / "schema" / "onet_schema_en.ttl",
+        _PARENT_ROOT / "3. Indonesian Translation" / "i18n" / "onet_schema_en.ttl",
+    ),
+    PROJECT_ROOT / "schema" / "onet_schema_en.ttl",
+)
+SCHEMA_FALLBACK = _first_existing(
+    (
+        PROJECT_ROOT / "onet_schema.ttl",
+        _PARENT_ROOT / "2. ABox + TRBox" / "onet_schema.ttl",
+    ),
+    PROJECT_ROOT / "onet_schema.ttl",
+)
+ABOX = _first_existing(
+    (
+        PROJECT_ROOT / "onet_abox.ttl",
+        _PARENT_ROOT / "2. ABox + TRBox" / "onet_abox.ttl",
+    ),
+    PROJECT_ROOT / "onet_abox.ttl",
+)
 DEFAULT_INDEX = PROJECT_ROOT / "data" / "onet_index.sqlite"
 CONFIG_DIR = PROJECT_ROOT / "config"
 RULES_DIR = PROJECT_ROOT / "rules"
@@ -82,7 +111,12 @@ def find_overlay(explicit: Optional[str | Path] = None) -> Optional[Path]:
     if stable.exists():
         return stable
     candidates = sorted(PROJECT_ROOT.glob("i18n-*/onet_i18n_id.ttl"), reverse=True)
-    return candidates[0] if candidates else None
+    if candidates:
+        return candidates[0]
+    workspace = (
+        PROJECT_ROOT.parent / "3. Indonesian Translation" / "i18n" / "onet_i18n_id.ttl"
+    )
+    return workspace if workspace.exists() else None
 
 
 def resolve_project_path(value: str | Path, base: Path = PROJECT_ROOT) -> Path:

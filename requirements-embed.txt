@@ -1,0 +1,9 @@
+# Semantic retrieval extras (occupation-card embeddings).
+# The base runtime does not need these packages; only build-embeddings and
+# semantic/hybrid retrieval do.
+#
+#   pip install -r requirements-embed.txt
+#
+# sentence-transformers pulls torch, transformers, and numpy.
+sentence-transformers>=3.0,<6
+numpy>=1.26

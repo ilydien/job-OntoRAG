@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence
 
 from . import config
+from .embeddings import EmbeddingBackend, EmbeddingUnavailable, SentenceTransformerBackend
 from .extraction import ElementCatalog, Profile, extract_from_text
 from .lexicon import Lexicon
 from .ontology import Ontology
 from .policy import IndexPolicy, RankingPolicy, load_index_policy, load_ranking_policy
 from .query_engine import Index
 from .reasoning import ReasoningService, SqlReasoner, make_reasoner
+from .retrieval import EmbeddingIndexMismatch, SemanticRetriever
 from .scoring import Recommendation, score_candidates
 
 
@@ -25,6 +28,8 @@ class Pipeline:
         policy: RankingPolicy,
         index_policy: IndexPolicy,
         reasoner: ReasoningService | None = None,
+        retriever: SemanticRetriever | None = None,
+        retrieval_mode: Optional[str] = None,
     ) -> None:
         self.index = index
         self.ontology = ontology
@@ -32,6 +37,8 @@ class Pipeline:
         self.policy = policy
         self.index_policy = index_policy
         self.reasoner = reasoner or SqlReasoner()
+        self.retriever = retriever
+        self.retrieval_mode = (retrieval_mode or policy.retrieval_mode or "auto").lower()
         self.catalog = ElementCatalog.from_rows(index.element_catalog_rows())
 
     @classmethod
@@ -45,6 +52,9 @@ class Pipeline:
         lexicon_path: str | Path | None = None,
         reasoner_mode: str = "auto",
         temp_dir: str | Path = config.DATA_DIR,
+        retrieval: Optional[str] = None,
+        embedding_model: Optional[str] = None,
+        embedding_backend: Optional[EmbeddingBackend] = None,
     ) -> "Pipeline":
         policy = load_ranking_policy(policy_path)
         index_policy = load_index_policy(index_policy_path)
@@ -63,7 +73,30 @@ class Pipeline:
             policy_file=policy_path,
             temp_dir=temp_dir,
         )
-        return cls(index, ontology, lexicon, policy, index_policy, reasoner)
+        mode = (retrieval or policy.retrieval_mode or "auto").lower()
+        if mode not in {"auto", "semantic", "lexical", "hybrid"}:
+            raise ValueError(f"unknown retrieval mode: {mode}")
+        retriever: Optional[SemanticRetriever] = None
+        if mode in {"auto", "semantic", "hybrid"}:
+            try:
+                backend = embedding_backend or SentenceTransformerBackend(
+                    embedding_model or policy.embedding_model or index_policy.embedding_model,
+                    batch_size=index_policy.embedding_batch_size,
+                )
+                retriever = SemanticRetriever(index, backend)
+                if mode == "auto":
+                    mode = "semantic"
+            except (EmbeddingUnavailable, EmbeddingIndexMismatch) as exc:
+                if mode != "auto":
+                    index.close()
+                    raise
+                print(
+                    f"warning: semantic retrieval unavailable ({exc}); "
+                    "falling back to lexical FTS5 retrieval",
+                    file=sys.stderr,
+                )
+                mode = "lexical"
+        return cls(index, ontology, lexicon, policy, index_policy, reasoner, retriever, mode)
 
     def close(self) -> None:
         self.index.close()
@@ -136,11 +169,26 @@ class Pipeline:
             return []
 
         query_text = text if text is not None else (profile.lexical_text or profile.raw_text)
-        lexical_scores = self.index.lexical_scores(
-            query_text or "",
-            self.policy.lexical_candidate_limit,
-            self.index_policy.min_fts_token_length,
-        )
+        candidate_iris = [str(row["iri"]) for row in candidates]
+        semantic_scores: Dict[str, float] = {}
+        lexical_scores: Dict[str, float] = {}
+        if self.retrieval_mode in {"semantic", "hybrid"}:
+            if self.retriever is None:
+                raise RuntimeError("semantic retrieval requested but no retriever is configured")
+            # Free text is the natural input for the embedding model; the
+            # lexicon-expanded text stays as a fallback for empty raw input.
+            embedding_text = text if text is not None else (profile.raw_text or profile.lexical_text)
+            semantic_scores = self.retriever.scores(
+                embedding_text or "",
+                candidate_iris,
+                self.policy.semantic_candidate_limit,
+            )
+        if self.retrieval_mode in {"lexical", "hybrid"} or not semantic_scores:
+            lexical_scores = self.index.lexical_scores(
+                query_text or "",
+                self.policy.lexical_candidate_limit,
+                self.index_policy.min_fts_token_length,
+            )
 
         # Reason only over a shortlist.  Preliminary scores use the same
         # generic scorer, but no reasoning flags.
@@ -150,6 +198,7 @@ class Pipeline:
             self.policy,
             candidates,
             lexical_scores=lexical_scores,
+            semantic_scores=semantic_scores,
             top_k=self.policy.reasoning_candidate_limit,
         )
         shortlist_rows = [recommendation.row for recommendation in shortlist]
@@ -163,6 +212,7 @@ class Pipeline:
             self.policy,
             candidates,
             lexical_scores=lexical_scores,
+            semantic_scores=semantic_scores,
             reasoning_flags=reasoning_flags,
             top_k=top_k or self.policy.top_k,
         )
@@ -216,6 +266,21 @@ class Pipeline:
                         f"preference {match['preference_weight']:.2f}; normalized rating {match['normalized_rating']:.2f}",
                     ),
                     "value": match["normalized_rating"],
+                }
+            )
+
+        if "semantic" in recommendation.component_scores:
+            model = self.retriever.info.model if self.retriever else ""
+            evidence.append(
+                {
+                    "kind": "semantic",
+                    "label": self._t(language, "Kemiripan semantik embedding", "Embedding semantic similarity"),
+                    "detail": self._t(
+                        language,
+                        f"kemiripan kosinus ternormalisasi terhadap kartu okupasi ({model})",
+                        f"normalized cosine similarity to the occupation card ({model})",
+                    ),
+                    "value": recommendation.component_scores["semantic"],
                 }
             )
 

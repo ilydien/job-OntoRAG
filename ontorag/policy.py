@@ -50,6 +50,10 @@ class RankingPolicy:
     lexicon_file: Path
     reasoning_map_file: Path
     index_policy_iri: Optional[str] = None
+    retrieval_mode: str = "auto"
+    semantic_normalization: str = "minmax"
+    semantic_candidate_limit: int = 300
+    embedding_model: Optional[str] = None
     metadata: Dict[str, object] = field(default_factory=dict)
 
     @property
@@ -73,6 +77,12 @@ class IndexPolicy:
     min_fts_token_length: int
     fts_tokenize: str
     index_version: str
+    embedding_model: str = "intfloat/multilingual-e5-small"
+    embedding_batch_size: int = 32
+    embedding_max_tasks: int = 8
+    embedding_max_elements: int = 12
+    embedding_max_job_titles: int = 5
+    embedding_card_version: str = "1"
 
     @property
     def indexed_rating_type_iris(self) -> List[str]:
@@ -121,6 +131,14 @@ def load_ranking_policy(path: str | Path = config.DEFAULT_POLICY) -> RankingPoli
         if term is None:
             raise ValueError(f"missing required boolean property {predicate} in {path}")
         return bool(term.python_value())
+
+    def optional_int(predicate: str, default: int) -> int:
+        value = ttl_stream.numeric_value(p, predicate, None)
+        return int(value) if value is not None else default
+
+    def optional_string(predicate: str, default: Optional[str] = None) -> Optional[str]:
+        value = ttl_stream.literal_value(p, predicate, None)
+        return value if value else default
 
     tier_order = [t.value for t in p.get(config.CAREER + "tierOrder", []) if t.kind == "literal"]
     if not tier_order:
@@ -200,6 +218,10 @@ def load_ranking_policy(path: str | Path = config.DEFAULT_POLICY) -> RankingPoli
         lexicon_file=lexicon_path,
         reasoning_map_file=reasoning_map_path,
         index_policy_iri=index_policy,
+        retrieval_mode=optional_string(config.CAREER + "retrievalMode", "auto") or "auto",
+        semantic_normalization=optional_string(config.CAREER + "semanticNormalization", "minmax") or "minmax",
+        semantic_candidate_limit=optional_int(config.CAREER + "semanticCandidateLimit", 300),
+        embedding_model=optional_string(config.CAREER + "embeddingModel"),
     )
 
 
@@ -243,6 +265,24 @@ def load_index_policy(path: str | Path = config.DEFAULT_INDEX_POLICY) -> IndexPo
     )
     if not index_version:
         raise ValueError(f"missing required career:indexVersion in {path}")
+    embedding_model = ttl_stream.literal_value(
+        p, config.CAREER + "embeddingModel", None
+    ) or "intfloat/multilingual-e5-small"
+    embedding_batch_size = ttl_stream.numeric_value(
+        p, config.CAREER + "embeddingBatchSize", None
+    )
+    embedding_max_tasks = ttl_stream.numeric_value(
+        p, config.CAREER + "embeddingMaxTasks", None
+    )
+    embedding_max_elements = ttl_stream.numeric_value(
+        p, config.CAREER + "embeddingMaxElements", None
+    )
+    embedding_max_job_titles = ttl_stream.numeric_value(
+        p, config.CAREER + "embeddingMaxJobTitles", None
+    )
+    embedding_card_version = ttl_stream.literal_value(
+        p, config.CAREER + "embeddingCardVersion", None
+    ) or "1"
     return IndexPolicy(
         iri=policy_iri,
         name=ttl_stream.literal_value(p, config.RDFS + "label", local_name(policy_iri)) or local_name(policy_iri),
@@ -252,4 +292,10 @@ def load_index_policy(path: str | Path = config.DEFAULT_INDEX_POLICY) -> IndexPo
         min_fts_token_length=int(min_fts_token_length),
         fts_tokenize=fts_tokenize,
         index_version=index_version,
+        embedding_model=embedding_model,
+        embedding_batch_size=int(embedding_batch_size) if embedding_batch_size is not None else 32,
+        embedding_max_tasks=int(embedding_max_tasks) if embedding_max_tasks is not None else 8,
+        embedding_max_elements=int(embedding_max_elements) if embedding_max_elements is not None else 12,
+        embedding_max_job_titles=int(embedding_max_job_titles) if embedding_max_job_titles is not None else 5,
+        embedding_card_version=embedding_card_version,
     )

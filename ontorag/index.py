@@ -225,6 +225,21 @@ CREATE TABLE IF NOT EXISTS job_zones (
     name_en TEXT,
     name_id TEXT
 );
+
+-- Dense occupation-card vectors.  Filled by the build-embeddings command;
+-- the table is created here so an index always has a stable schema.
+CREATE TABLE IF NOT EXISTS occupation_embeddings (
+    occupation_iri TEXT PRIMARY KEY,
+    dim INTEGER NOT NULL,
+    vector BLOB NOT NULL,
+    card_text TEXT,
+    card_hash TEXT
+);
+
+CREATE TABLE IF NOT EXISTS embedding_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);
 """
 
 
