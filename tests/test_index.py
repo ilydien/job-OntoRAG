@@ -86,6 +86,21 @@ class TinyIndexTests(unittest.TestCase):
             self.assertEqual(elements[0]["element_name_en"], "Programming")
             self.assertEqual(len(index.element_catalog_rows()), 1)
 
+    def test_elements_for_many_batches_and_filters(self) -> None:
+        with Index(self.index_path) as index:
+            iri = next(iter(index.lexical_scores("data models", 10, 2)))
+            batched = index.elements_for_many([iri, "urn:missing"])
+            self.assertEqual(batched[iri][0]["element_name_en"], "Programming")
+            self.assertEqual(batched["urn:missing"], [])
+            filtered = index.elements_for_many(
+                [iri], element_iris=["https://example.org/element/programming"]
+            )
+            self.assertEqual(len(filtered[iri]), 1)
+            none_match = index.elements_for_many(
+                [iri], element_iris=["https://example.org/element/absent"]
+            )
+            self.assertEqual(none_match[iri], [])
+
     def test_meta_records_provenance(self) -> None:
         with Index(self.index_path) as index:
             meta = index.meta()

@@ -52,7 +52,7 @@ class RankingPolicy:
     index_policy_iri: Optional[str] = None
     retrieval_mode: str = "auto"
     semantic_normalization: str = "minmax"
-    semantic_candidate_limit: int = 300
+    semantic_candidate_limit: int = 2000
     embedding_model: Optional[str] = None
     metadata: Dict[str, object] = field(default_factory=dict)
 
@@ -220,7 +220,7 @@ def load_ranking_policy(path: str | Path = config.DEFAULT_POLICY) -> RankingPoli
         index_policy_iri=index_policy,
         retrieval_mode=optional_string(config.CAREER + "retrievalMode", "auto") or "auto",
         semantic_normalization=optional_string(config.CAREER + "semanticNormalization", "minmax") or "minmax",
-        semantic_candidate_limit=optional_int(config.CAREER + "semanticCandidateLimit", 300),
+        semantic_candidate_limit=optional_int(config.CAREER + "semanticCandidateLimit", 2000),
         embedding_model=optional_string(config.CAREER + "embeddingModel"),
     )
 

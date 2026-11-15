@@ -134,15 +134,54 @@ The SQL path is the low-latency mode. Pellet is the tier-aware mode.
 python3 -m unittest discover -s tests -v
 ```
 
-- System Python (no owlready2): 54 pass, 1 skipped (Pellet test).
-- `owlready2==0.48` environment with Java 21: 55 pass, including the
+- System Python (no owlready2): 60 pass, 1 skipped (Pellet test).
+- `owlready2==0.48` environment with Java 21: 61 pass, including the
   end-to-end Pellet/SWRL tier test.
 
 The suite covers the streaming parser, policy loading, lexicon and negation,
-profile extraction, SQLite/FTS5 schema and candidate filters, scoring and tier
-sorting, SQL fallback, CLI JSON output, occupation-card building, the
-deterministic embedding backend, semantic retrieval/fallback, Java runtime
-resolution, and the optional Pellet path.
+profile extraction, SQLite/FTS5 schema and candidate filters, batched element
+lookups, scoring and tier sorting, SQL fallback, CLI JSON output,
+occupation-card building, the deterministic embedding backend, semantic
+retrieval/fallback, Java runtime resolution, and the optional Pellet path.
+
+## Candidate recall and lexicon fixes
+
+Two ranking defects were found and fixed:
+
+1. **Arbitrary candidate truncation.** The candidate query used
+   `ORDER BY iri LIMIT :candidateLimit` with `candidateLimit = 250`. The
+   hard-filtered pool for a default profile is ~750 occupations, so
+   `Ilmuwan Data` (15-2051.00, position 700) and `Ahli Statistik` never
+   reached retrieval or scoring. `candidateLimit` is now a safety cap
+   (2000, above the total occupation count); collection and ranking always
+   see the whole hard-filtered pool. The dense/sparse recall caps
+   (`lexicalCandidateLimit`, `semanticCandidateLimit`) were raised to the
+   same guard so neither pass silently drops a relevant occupation.
+2. **`membangun`-as-construction.** The lexicon mapped `membangun` to
+   Realistic and to *Building and Construction*, so "membangun model"
+   inflated construction-heavy occupations. The bare keyword was removed;
+   explicit phrases now decide the sense (`membangun model/sistem/aplikasi`
+   -> Investigative, `membangun rumah/gedung/jembatan` -> Realistic and
+   Building and Construction). New vocabulary adds `model`, `pemodelan`,
+   `statistik`, `algoritma`, `machine learning`, `pemrograman`, `python`,
+   and `sql`, plus the elements *Analyzing Data or Information* and
+   *Programming*.
+
+Element ratings for the whole pool are now fetched with one batched query
+(`Index.elements_for_many`, filtered to the profile's elements) instead of one
+query per occupation. With these fixes the same prompt returns
+`Ilmuwan Data` first in `--retrieval lexical`:
+
+| # | Tier | Score | Occupation |
+| ---: | --- | ---: | --- |
+| 1 | Eligible | 0.9434 | Ilmuwan Data |
+| 2 | Eligible | 0.9231 | Perencana Transportasi |
+| 3 | Eligible | 0.9169 | Ilmuwan Atmosfer dan Luar Angkasa |
+| 4 | Eligible | 0.9044 | Insinyur Nuklir |
+| 5 | Eligible | 0.8864 | Insinyur Dirgantara |
+
+The tier is `Eligible` here because the SQL fallback cannot derive
+`EligibleStrong`; the Pellet path produces the strong tiers.
 
 ## Semantic retrieval (occupation-card embeddings)
 
@@ -218,8 +257,11 @@ it works across owlready2 versions. Override it per request with
 
 - Retrieval now has a semantic path, but the full-data build was not executed
   in this change: no numbers for embedding build time, vector-table size, or
-  Recall@k/MRR/nDCG are reported yet. The 55-test suite (1 skipped Pellet test)
+  Recall@k/MRR/nDCG are reported yet. The 61-test suite (1 skipped Pellet test)
   covers the plumbing with a deterministic test backend.
+- Candidate recall is no longer truncated; the lexical ranking of the data
+  prompt is now checked manually. A small gold query set with Recall@k/MRR
+  would make ranking quality measurable, and is a natural next step.
 - Only the reasoning shortlist receives explicit SWRL flags. Candidates outside
   the shortlist keep the SQL eligibility default, so they cannot become
   `EligibleStrong`.

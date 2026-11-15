@@ -53,6 +53,56 @@ class ScoringTests(unittest.TestCase):
         self.assertAlmostEqual(score, 0.75)
         self.assertEqual(matches[0]["normalized_rating"], 0.75)
 
+    def test_prefetched_element_rows_are_used(self) -> None:
+        rows = [
+            {
+                "iri": "urn:occupation:a",
+                "title_en": "Occupation A",
+                "holland_primary": "Investigative",
+            },
+            {
+                "iri": "urn:occupation:b",
+                "title_en": "Occupation B",
+                "holland_primary": "Investigative",
+            },
+        ]
+        prefetched = {
+            "urn:occupation:a": [
+                {
+                    "element_iri": "urn:element:programming",
+                    "element_name_en": "Programming",
+                    "norm_value": 0.8,
+                    "rating_type": "KnowledgeRating",
+                }
+            ],
+            "urn:occupation:b": [],
+        }
+        recommendations = score_candidates(
+            FakeIndex(),
+            self.profile,
+            self.policy,
+            rows,
+            element_rows=prefetched,
+            top_k=2,
+        )
+        by_iri = {item.occupation_iri: item for item in recommendations}
+        self.assertAlmostEqual(by_iri["urn:occupation:a"].component_scores["element"], 0.8)
+        self.assertAlmostEqual(by_iri["urn:occupation:b"].component_scores["element"], 0.0)
+
+    def test_profile_without_elements_skips_element_component(self) -> None:
+        profile = Profile(user_iri="urn:test:user", holland={"Investigative": 1.0})
+        rows = [
+            {
+                "iri": "urn:occupation:a",
+                "title_en": "Occupation A",
+                "holland_primary": "Investigative",
+            }
+        ]
+        recommendations = score_candidates(
+            FakeIndex(), profile, self.policy, rows, top_k=1
+        )
+        self.assertNotIn("element", recommendations[0].component_scores)
+
     def test_normalize_lexical(self) -> None:
         normalized = normalize_lexical({"a": 1.0, "b": 3.0}, ["a", "b", "c"])
         self.assertAlmostEqual(normalized["a"], 0.0)

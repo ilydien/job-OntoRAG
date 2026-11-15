@@ -19,6 +19,9 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(policy.retrieval_mode, "auto")
         self.assertEqual(policy.semantic_normalization, "minmax")
         self.assertGreater(policy.semantic_candidate_limit, 0)
+        # The candidate limit is a safety cap: retrieval must rank the whole
+        # hard-filtered pool, so this stays well above the O*NET occupation count.
+        self.assertGreaterEqual(policy.candidate_limit, 1000)
         self.assertEqual(len(policy.rule_files), 3)
         self.assertTrue(policy.reasoning_map_file.exists())
 

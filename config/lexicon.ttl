@@ -87,14 +87,28 @@ lex:entry_negation a lex:LexicalEntry ;
 
 lex:entry_holland_realistic a lex:LexicalEntry ;
     rdfs:label "Realistic vocabulary"@en ;
-    lex:keyword "mesin", "alat", "peralatan", "membangun", "konstruksi", "fisik", "lapangan", "praktik", "praktis", "teknisi", "memperbaiki", "outdoor", "machine", "tools", "build", "construction", "physical", "hands-on", "repair" ;
+    lex:keyword "mesin", "alat", "peralatan", "konstruksi", "fisik", "lapangan", "praktik", "praktis", "teknisi", "memperbaiki", "outdoor", "machine", "tools", "construction", "physical", "hands-on", "repair" ;
+    lex:targetKind "holland" ;
+    lex:target "Realistic" ;
+    lex:weight "0.75"^^xsd:decimal .
+
+lex:entry_phrase_build_model a lex:LexicalEntry ;
+    rdfs:label "building a model/system (abstract construction)"@en ;
+    lex:pattern "\\bmembangun\\s+(?:model|sistem|aplikasi|algoritma|perangkat\\s+lunak|solusi\\s+data|dashboard)\\b" ;
+    lex:targetKind "holland" ;
+    lex:target "Investigative" ;
+    lex:weight "0.75"^^xsd:decimal .
+
+lex:entry_phrase_build_structure a lex:LexicalEntry ;
+    rdfs:label "building a physical structure"@en ;
+    lex:pattern "\\bmembangun\\s+(?:rumah|gedung|jembatan|jalan|infrastruktur|proyek\\s+konstruksi|bangunan)\\b" ;
     lex:targetKind "holland" ;
     lex:target "Realistic" ;
     lex:weight "0.75"^^xsd:decimal .
 
 lex:entry_holland_investigative a lex:LexicalEntry ;
     rdfs:label "Investigative vocabulary"@en ;
-    lex:keyword "riset", "penelitian", "meneliti", "analisis", "menganalisis", "data", "ilmiah", "sains", "logika", "eksperimen", "memecahkan", "research", "analysis", "analyze", "data", "science", "scientific", "experiment", "problem solving" ;
+    lex:keyword "riset", "penelitian", "meneliti", "analisis", "menganalisis", "data", "ilmiah", "sains", "logika", "eksperimen", "memecahkan", "model", "pemodelan", "statistik", "algoritma", "machine learning", "pembelajaran mesin", "pemrograman", "research", "analysis", "analyze", "data", "science", "scientific", "experiment", "problem solving" ;
     lex:targetKind "holland" ;
     lex:target "Investigative" ;
     lex:weight "0.75"^^xsd:decimal .
@@ -245,9 +259,30 @@ lex:entry_element_repairing a lex:LexicalEntry ;
 
 lex:entry_element_building a lex:LexicalEntry ;
     rdfs:label "construction vocabulary"@en ;
-    lex:keyword "membangun", "konstruksi", "bangunan", "building", "construction" ;
+    lex:keyword "konstruksi", "bangunan", "construction" ;
     lex:targetKind "element" ;
     lex:target "Building and Construction" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_construction_phrase a lex:LexicalEntry ;
+    rdfs:label "physical construction phrases"@en ;
+    lex:pattern "\\bmembangun\\s+(?:rumah|gedung|jembatan|jalan|infrastruktur|proyek\\s+konstruksi|bangunan)\\b" ;
+    lex:targetKind "element" ;
+    lex:target "Building and Construction" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_data_analysis a lex:LexicalEntry ;
+    rdfs:label "data analysis vocabulary"@en ;
+    lex:keyword "menganalisis data", "analisis data", "analitik data", "olah data", "data analysis", "data analytics" ;
+    lex:targetKind "element" ;
+    lex:target "Analyzing Data or Information" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_programming a lex:LexicalEntry ;
+    rdfs:label "programming vocabulary"@en ;
+    lex:keyword "pemrograman", "programming", "coding", "python", "sql", "machine learning", "pembelajaran mesin" ;
+    lex:targetKind "element" ;
+    lex:target "Programming" ;
     lex:weight "0.60"^^xsd:decimal .
 
 lex:entry_element_health a lex:LexicalEntry ;

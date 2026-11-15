@@ -6,9 +6,14 @@
 career:DefaultRankingPolicy a career:RankingPolicy ;
     rdfs:label "Default OntoRAG ranking policy"@en ;
     career:policyTopK 10 ;
-    career:candidateLimit 250 ;
+    # Safety cap only.  Retrieval and ranking always see the whole
+    # hard-filtered pool; this must stay comfortably above the O*NET
+    # occupation count so it never truncates an arbitrary IRI slice.
+    career:candidateLimit 2000 ;
     career:reasoningCandidateLimit 60 ;
-    career:lexicalCandidateLimit 300 ;
+    # Recall caps for the dense/sparse retrieval passes.  They must also cover
+    # the whole pool so retrieval never silently drops a relevant occupation.
+    career:lexicalCandidateLimit 2000 ;
     career:requireEligible true ;
     career:strongHollandThreshold "0.70"^^xsd:decimal ;
     career:strongElementThreshold "0.65"^^xsd:decimal ;
@@ -18,7 +23,7 @@ career:DefaultRankingPolicy a career:RankingPolicy ;
     career:elementAggregation "max" ;
     career:lexicalNormalization "minmax" ;
     career:semanticNormalization "minmax" ;
-    career:semanticCandidateLimit 300 ;
+    career:semanticCandidateLimit 2000 ;
     career:retrievalMode "auto" ;
     career:tierOrder "EligibleStrong" ;
     career:tierOrder "Eligible" ;

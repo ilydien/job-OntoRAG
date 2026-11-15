@@ -123,6 +123,48 @@ class Index:
         )
         return [dict(row) for row in rows]
 
+    def elements_for_many(
+        self,
+        occupation_iris: Iterable[str],
+        element_iris: Optional[Iterable[str]] = None,
+    ) -> Dict[str, List[dict]]:
+        """Batch-load element ratings for several occupations at once.
+
+        Scoring a whole candidate pool used to issue one query per
+        occupation.  Passing the profile's element IRIs keeps the result
+        small, so this is the cheap path for large pools.
+
+        Returns a mapping keyed by occupation IRI; occupations with no
+        matching rows map to an empty list.
+        """
+
+        unique = [str(iri) for iri in dict.fromkeys(occupation_iris) if iri]
+        result: Dict[str, List[dict]] = {iri: [] for iri in unique}
+        if not unique:
+            return result
+        elements = [str(iri) for iri in dict.fromkeys(element_iris or ()) if iri]
+        template = self.sql("occupation_elements_bulk.sql")
+        # Keep combined bind variables below SQLite's default 999 limit.
+        chunk_size = 400 if not elements else max(1, 900 - len(elements))
+        for start in range(0, len(unique), chunk_size):
+            chunk = unique[start : start + chunk_size]
+            placeholders = ",".join("?" for _ in chunk)
+            if elements:
+                element_filter = "AND r.element_iri IN ({})".format(
+                    ",".join("?" for _ in elements)
+                )
+            else:
+                element_filter = ""
+            sql = template.format(
+                placeholders=placeholders, element_filter=element_filter
+            )
+            params: List[str] = list(chunk)
+            if elements:
+                params.extend(elements)
+            for row in self.conn.execute(sql, params):
+                result[str(row["occupation_iri"])].append(dict(row))
+        return result
+
     def summary(self, occupation_iri: str) -> Optional[dict]:
         rows = self.query(
             "occupation_summary.sql",

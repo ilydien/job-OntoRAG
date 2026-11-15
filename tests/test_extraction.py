@@ -20,6 +20,16 @@ class ExtractionTests(unittest.TestCase):
                 ElementInfo("urn:element:instructing", "Instructing", "Mengajar"),
                 ElementInfo("urn:element:programming", "Programming", "Pemrograman"),
                 ElementInfo("urn:element:sales", "Sales and Marketing", "Penjualan"),
+                ElementInfo(
+                    "urn:element:data",
+                    "Analyzing Data or Information",
+                    "Menganalisis Data atau Informasi",
+                ),
+                ElementInfo(
+                    "urn:element:building",
+                    "Building and Construction",
+                    "Bangunan dan Konstruksi",
+                ),
             ]
         )
 
@@ -55,6 +65,44 @@ class ExtractionTests(unittest.TestCase):
         )
         self.assertEqual(profile.education_local, "S1")
         self.assertEqual(profile.max_job_zone, 4)
+
+    def test_build_model_is_investigative_not_construction(self) -> None:
+        profile = extract_from_text(
+            "Saya suka menganalisis data dan membangun model.",
+            self.ontology,
+            self.lexicon,
+            self.catalog,
+            direct_element_weight=self.policy.direct_element_weight,
+            direct_element_min_length=self.policy.direct_element_min_length,
+        )
+        self.assertIn("Investigative", profile.holland)
+        self.assertNotIn("Realistic", profile.holland)
+        self.assertIn("urn:element:data", profile.elements)
+        self.assertNotIn("urn:element:building", profile.elements)
+
+    def test_build_house_stays_realistic_and_construction(self) -> None:
+        profile = extract_from_text(
+            "Saya suka membangun rumah dan jembatan.",
+            self.ontology,
+            self.lexicon,
+            self.catalog,
+            direct_element_weight=self.policy.direct_element_weight,
+            direct_element_min_length=self.policy.direct_element_min_length,
+        )
+        self.assertIn("Realistic", profile.holland)
+        self.assertIn("urn:element:building", profile.elements)
+
+    def test_bare_membangun_no_longer_means_construction(self) -> None:
+        profile = extract_from_text(
+            "Saya suka membangun.",
+            self.ontology,
+            self.lexicon,
+            self.catalog,
+            direct_element_weight=self.policy.direct_element_weight,
+            direct_element_min_length=self.policy.direct_element_min_length,
+        )
+        self.assertNotIn("Realistic", profile.holland)
+        self.assertNotIn("urn:element:building", profile.elements)
 
     def test_profile_ttl_contains_user_constraints(self) -> None:
         profile = extract_from_text(

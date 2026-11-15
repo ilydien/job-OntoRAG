@@ -170,6 +170,12 @@ class Pipeline:
 
         query_text = text if text is not None else (profile.lexical_text or profile.raw_text)
         candidate_iris = [str(row["iri"]) for row in candidates]
+        # One batched element lookup shared by both scoring passes.
+        element_rows = (
+            self.index.elements_for_many(candidate_iris, profile.elements.keys())
+            if profile.elements
+            else None
+        )
         semantic_scores: Dict[str, float] = {}
         lexical_scores: Dict[str, float] = {}
         if self.retrieval_mode in {"semantic", "hybrid"}:
@@ -199,6 +205,7 @@ class Pipeline:
             candidates,
             lexical_scores=lexical_scores,
             semantic_scores=semantic_scores,
+            element_rows=element_rows,
             top_k=self.policy.reasoning_candidate_limit,
         )
         shortlist_rows = [recommendation.row for recommendation in shortlist]
@@ -214,6 +221,7 @@ class Pipeline:
             lexical_scores=lexical_scores,
             semantic_scores=semantic_scores,
             reasoning_flags=reasoning_flags,
+            element_rows=element_rows,
             top_k=top_k or self.policy.top_k,
         )
         for recommendation in recommendations:

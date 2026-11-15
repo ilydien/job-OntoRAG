@@ -162,6 +162,7 @@ def score_candidates(
     top_k: Optional[int] = None,
     semantic_scores: Optional[Mapping[str, float]] = None,
     semantic_normalization: Optional[str] = None,
+    element_rows: Optional[Mapping[str, Sequence[Mapping[str, object]]]] = None,
 ) -> List[Recommendation]:
     """Score and rank candidate rows.
 
@@ -169,6 +170,10 @@ def score_candidates(
     and ``lexical_scores`` (BM25) are only added to a row when the caller
     computed them for this request.  Relative component weights are
     renormalised over the components that are actually available.
+
+    ``element_rows`` is an optional pre-fetched mapping (see
+    :meth:`Index.elements_for_many`) so the whole pool shares one batch
+    lookup instead of a query per occupation.
     """
 
     lexical_scores = lexical_scores or {}
@@ -183,6 +188,12 @@ def score_candidates(
         candidate_iris,
         semantic_normalization or policy.semantic_normalization,
     )
+    if (
+        element_rows is None
+        and profile.elements
+        and hasattr(index, "elements_for_many")
+    ):
+        element_rows = index.elements_for_many(candidate_iris, profile.elements.keys())
     weights = {component.component_type: component.weight for component in policy.components}
     recommendations: List[Recommendation] = []
 
@@ -192,8 +203,16 @@ def score_candidates(
         holland = holland_score(profile, row, policy)
         if holland is not None:
             component_values["holland"] = holland
-        element_rows = index.elements_for(iri)
-        element, element_matches = element_score(profile, element_rows, policy)
+        if not profile.elements:
+            element, element_matches = None, []
+        elif element_rows is not None:
+            element, element_matches = element_score(
+                profile, element_rows.get(iri, ()), policy
+            )
+        else:
+            element, element_matches = element_score(
+                profile, index.elements_for(iri), policy
+            )
         if element is not None:
             component_values["element"] = element
         if lexical_scores:
