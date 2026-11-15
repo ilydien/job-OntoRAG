@@ -45,6 +45,9 @@ CONFIG_DIR = PROJECT_ROOT / "config"
 RULES_DIR = PROJECT_ROOT / "rules"
 QUERIES_DIR = PROJECT_ROOT / "queries"
 DATA_DIR = PROJECT_ROOT / "data"
+ENVIRONMENT_DIR = PROJECT_ROOT / "environment"
+# Optional bundled Java runtime used as a fallback by the Pellet reasoner.
+BUNDLED_JRE = ENVIRONMENT_DIR / "jre"
 
 DEFAULT_POLICY = CONFIG_DIR / "ranking_policy.ttl"
 DEFAULT_INDEX_POLICY = CONFIG_DIR / "index_policy.ttl"

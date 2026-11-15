@@ -134,15 +134,15 @@ The SQL path is the low-latency mode. Pellet is the tier-aware mode.
 python3 -m unittest discover -s tests -v
 ```
 
-- System Python (no owlready2): 43 pass, 1 skipped (Pellet test).
-- `owlready2==0.48` environment with Java 21: 44 pass, including the
+- System Python (no owlready2): 54 pass, 1 skipped (Pellet test).
+- `owlready2==0.48` environment with Java 21: 55 pass, including the
   end-to-end Pellet/SWRL tier test.
 
 The suite covers the streaming parser, policy loading, lexicon and negation,
 profile extraction, SQLite/FTS5 schema and candidate filters, scoring and tier
 sorting, SQL fallback, CLI JSON output, occupation-card building, the
-deterministic embedding backend, semantic retrieval/fallback, and the optional
-Pellet path.
+deterministic embedding backend, semantic retrieval/fallback, Java runtime
+resolution, and the optional Pellet path.
 
 ## Semantic retrieval (occupation-card embeddings)
 
@@ -195,17 +195,37 @@ deterministic keyword backend, so it runs without `torch` or network access:
 python3 -m unittest discover -s tests -v
 ```
 
+## Java runtime for Pellet
+
+Pellet needs a Java runtime, and owlready2 spawns it as a child process. The
+reasoner resolves Java in this order:
+
+1. `ONTORAG_JAVA` (a `java` binary or a JDK/JRE home directory),
+2. `JAVA_HOME`,
+3. the bundled runtime at `environment/jre` (Temurin 21 in this workspace),
+4. a local `jre` folder,
+5. `java` on `PATH`.
+
+The resolved binary is exported through `JAVA_HOME`, `PATH`, and
+`owlready2.JAVA_EXE` (when the installed owlready2 exposes that attribute), so
+it works across owlready2 versions. Override it per request with
+`recommend --java /path/to/java`. If no runtime is found, the message names the
+`ONTORAG_JAVA` variable, and `--reasoner auto` still falls back to SQL.
+
+`environment/jre/` is ignored by git, as are `data/` and Python caches.
+
 ## Remaining limitations
 
 - Retrieval now has a semantic path, but the full-data build was not executed
   in this change: no numbers for embedding build time, vector-table size, or
-  Recall@k/MRR/nDCG are reported yet. The 44-test suite (1 skipped Pellet test)
+  Recall@k/MRR/nDCG are reported yet. The 55-test suite (1 skipped Pellet test)
   covers the plumbing with a deterministic test backend.
 - Only the reasoning shortlist receives explicit SWRL flags. Candidates outside
   the shortlist keep the SQL eligibility default, so they cannot become
   `EligibleStrong`.
 - The current index is rating-centric; `NoRatingData` occupations are excluded
   from ranking by default.
-- Pellet needs Java. The pinned owlready2 0.48 release is important for Java 21
+- Pellet needs Java; the bundled `environment/jre` (Temurin 21) is detected
+  automatically, and the pinned owlready2 0.48 release is important for Java 21
   compatibility in this workspace.
 - No web UI is included; the deliverable is terminal/file based.

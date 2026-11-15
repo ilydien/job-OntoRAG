@@ -9,6 +9,8 @@ SQL-filtered candidates as ``Eligible``; it is intentionally conservative.
 from __future__ import annotations
 
 import hashlib
+import os
+import shutil
 import sys
 import tempfile
 from dataclasses import dataclass
@@ -27,6 +29,79 @@ class ReasoningUnavailable(RuntimeError):
 
 class ReasoningError(RuntimeError):
     pass
+
+
+JAVA_ENV = "ONTORAG_JAVA"
+
+
+def _java_binary(home: str | Path) -> Path:
+    home = Path(home).expanduser()
+    binary = home / "bin" / ("java.exe" if os.name == "nt" else "java")
+    return binary
+
+
+def _usable_java(path: Optional[Path]) -> Optional[Path]:
+    if path is None:
+        return None
+    try:
+        if path.is_file() and os.access(path, os.X_OK):
+            return path.resolve()
+    except OSError:
+        return None
+    return None
+
+
+def resolve_java_executable() -> Optional[Path]:
+    """Locate the Java runtime used by owlready2/Pellet.
+
+    Priority: explicit ``ONTORAG_JAVA``, ``JAVA_HOME``, the runtime bundled in
+    ``environment/jre``, a local ``jre`` folder, then ``java`` on ``PATH``.
+    ``ONTORAG_JAVA`` may point either at the ``java`` binary or at a JDK/JRE
+    home directory.
+    """
+
+    explicit = os.environ.get(JAVA_ENV)
+    if explicit:
+        candidate = Path(explicit).expanduser()
+        if candidate.is_dir():
+            candidate = _java_binary(candidate)
+        usable = _usable_java(candidate)
+        if usable:
+            return usable
+
+    home = os.environ.get("JAVA_HOME")
+    if home:
+        usable = _usable_java(_java_binary(home))
+        if usable:
+            return usable
+
+    for bundled in (config.BUNDLED_JRE, config.PROJECT_ROOT / "jre"):
+        usable = _usable_java(_java_binary(bundled))
+        if usable:
+            return usable
+
+    found = shutil.which("java")
+    return _usable_java(Path(found)) if found else None
+
+
+def configure_java_environment() -> Optional[Path]:
+    """Expose the resolved Java runtime to child processes.
+
+    Both ``JAVA_HOME``/``PATH`` and (later) ``owlready2.JAVA_EXE`` are set so
+    the reasoner works across owlready2 versions without relying on a global
+    Java installation.
+    """
+
+    java = resolve_java_executable()
+    if java is None:
+        return None
+    os.environ.setdefault("JAVA_HOME", str(java.parent.parent))
+    bin_dir = str(java.parent)
+    path = os.environ.get("PATH", "")
+    parts = path.split(os.pathsep) if path else []
+    if bin_dir not in parts:
+        os.environ["PATH"] = bin_dir + (os.pathsep + path if path else "")
+    return java
 
 
 class ReasoningService(Protocol):
@@ -201,11 +276,24 @@ class PelletReasoner:
         candidates: Sequence[dict],
         policy: RankingPolicy,
     ) -> Dict[str, dict]:
+        java = configure_java_environment()
         try:
             import owlready2
             from owlready2 import World, sync_reasoner_pellet
         except Exception as exc:  # pragma: no cover - depends on optional package
-            raise ReasoningUnavailable(f"owlready2/Pellet is not available: {exc}") from exc
+            java_hint = (
+                f"java={java}"
+                if java
+                else "no Java runtime found; set ONTORAG_JAVA or install a JRE"
+            )
+            raise ReasoningUnavailable(
+                f"owlready2/Pellet is not available: {exc} ({java_hint})"
+            ) from exc
+        if java is not None:
+            # owlready2 versions differ in how they spawn Java; the module
+            # attribute covers those that read it, while JAVA_HOME/PATH above
+            # covers the subprocess-based versions.
+            setattr(owlready2, "JAVA_EXE", str(java))
 
         self.temp_dir.mkdir(parents=True, exist_ok=True)
         bundle_text = self._bundle(profile, candidates)

@@ -72,6 +72,25 @@ def _uses_e5_prefixes(model_name: str) -> bool:
     return "e5" in model_name.lower()
 
 
+def model_dimension(model) -> int:
+    """Return the embedding dimension across sentence-transformers versions.
+
+    ``get_sentence_embedding_dimension`` was renamed to
+    ``get_embedding_dimension``; the new name is preferred so recent releases
+    do not emit a deprecation warning, while older releases keep working.
+    """
+
+    for name in ("get_embedding_dimension", "get_sentence_embedding_dimension"):
+        method = getattr(model, name, None)
+        if callable(method):
+            value = method()
+            if value:
+                return int(value)
+    raise EmbeddingUnavailable(
+        "embedding model does not expose an embedding dimension"
+    )
+
+
 class SentenceTransformerBackend:
     """``sentence-transformers`` backend with e5 query/passage prefixes."""
 
@@ -103,7 +122,7 @@ class SentenceTransformerBackend:
             ) from exc
         if max_seq_length is not None:
             self._model.max_seq_length = int(max_seq_length)
-        self.dim = int(self._model.get_sentence_embedding_dimension())
+        self.dim = model_dimension(self._model)
 
     def encode(self, texts: Sequence[str], kind: str = "passage") -> List[List[float]]:
         prefix = self.query_prefix if kind == "query" else self.passage_prefix

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Optional, Sequence
@@ -144,6 +145,10 @@ def cmd_recommend(args: argparse.Namespace) -> int:
     if not args.text and not args.profile:
         print("provide --text and/or --profile", file=sys.stderr)
         return 2
+    if getattr(args, "java", None):
+        from .reasoning import JAVA_ENV
+
+        os.environ[JAVA_ENV] = str(args.java)
     with _pipeline(args, args.reasoner) as pipeline:
         if args.profile:
             profile = pipeline.profile_from_json(
@@ -270,6 +275,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="candidate retrieval mode (default: ranking policy)",
     )
     recommend.add_argument("--embedding-model", default=None, help="sentence-transformers model id")
+    recommend.add_argument(
+        "--java",
+        default=None,
+        help="Java executable or JAVA_HOME for Pellet (default: auto-detect)",
+    )
     recommend.add_argument("--user-iri", default=None)
     recommend.add_argument("--out", default=None, help="write output to a file")
     _add_common_data_args(recommend)

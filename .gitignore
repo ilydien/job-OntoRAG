@@ -1,0 +1,6 @@
+# Generated artefacts and local tooling
+environment/jre/
+OpenJDK*.tar.gz
+data/
+__pycache__/
+*.pyc

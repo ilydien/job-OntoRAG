@@ -6,9 +6,11 @@ from pathlib import Path
 
 from ontorag.embeddings import (
     CardLimits,
+    EmbeddingUnavailable,
     build_card_text,
     build_embeddings,
     collect_cards,
+    model_dimension,
     unpack_vector,
 )
 from ontorag.index import build_index
@@ -18,6 +20,29 @@ from tests.fixtures import write_semantic_fixture
 
 DATA_IRI = "https://example.org/occupation/data-scientist"
 FIRE_IRI = "https://example.org/occupation/fire-inspector"
+
+
+class ModelDimensionTests(unittest.TestCase):
+    def test_prefers_the_renamed_api(self) -> None:
+        class Model:
+            def get_embedding_dimension(self) -> int:
+                return 384
+
+            def get_sentence_embedding_dimension(self) -> int:
+                raise AssertionError("deprecated API must not be called")
+
+        self.assertEqual(model_dimension(Model()), 384)
+
+    def test_falls_back_to_the_legacy_api(self) -> None:
+        class LegacyModel:
+            def get_sentence_embedding_dimension(self) -> int:
+                return 768
+
+        self.assertEqual(model_dimension(LegacyModel()), 768)
+
+    def test_missing_dimension_api_raises(self) -> None:
+        with self.assertRaises(EmbeddingUnavailable):
+            model_dimension(object())
 
 
 class CardBuilderTests(unittest.TestCase):
