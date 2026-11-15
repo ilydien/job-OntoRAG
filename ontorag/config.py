@@ -48,6 +48,8 @@ DATA_DIR = PROJECT_ROOT / "data"
 ENVIRONMENT_DIR = PROJECT_ROOT / "environment"
 # Optional bundled Java runtime used as a fallback by the Pellet reasoner.
 BUNDLED_JRE = ENVIRONMENT_DIR / "jre"
+BENCHMARK_DIR = PROJECT_ROOT / "benchmark"
+DEFAULT_BENCHMARK_QUERIES = BENCHMARK_DIR / "gold_queries.id.json"
 
 DEFAULT_POLICY = CONFIG_DIR / "ranking_policy.ttl"
 DEFAULT_INDEX_POLICY = CONFIG_DIR / "index_policy.ttl"

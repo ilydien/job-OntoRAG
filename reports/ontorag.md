@@ -134,8 +134,8 @@ The SQL path is the low-latency mode. Pellet is the tier-aware mode.
 python3 -m unittest discover -s tests -v
 ```
 
-- System Python (no owlready2): 60 pass, 1 skipped (Pellet test).
-- `owlready2==0.48` environment with Java 21: 61 pass, including the
+- System Python (no owlready2): 67 pass, 1 skipped (Pellet test).
+- `owlready2==0.48` environment with Java 21: 68 pass, including the
   end-to-end Pellet/SWRL tier test.
 
 The suite covers the streaming parser, policy loading, lexicon and negation,
@@ -185,6 +185,35 @@ query per occupation. With these fixes the same prompt returns
 
 The tier is `Eligible` here because the SQL fallback cannot derive
 `EligibleStrong`; the Pellet path produces the strong tiers.
+
+## Retrieval quality benchmark
+
+`benchmark/gold_queries.id.json` holds a small hand-labelled set of Indonesian
+career descriptions (text plus expected O*NET SOC codes). The `benchmark`
+command replays them and reports Recall@k and MRR per retrieval mode:
+
+```bash
+python3 -m ontorag.cli benchmark --index data/onet_index.sqlite \
+  --retrieval lexical,semantic,hybrid --k 10 --verbose
+```
+
+The gold set runs with a permissive profile (education `S3`, job zone 5) so the
+measurement isolates ranking rather than eligibility filtering; `--education`
+and `--max-job-zone` override it. A mode that cannot be built (for example
+`semantic` without the embedding model) is reported as `n/a` and the remaining
+modes still run. Metrics live in `ontorag/benchmark.py` and are covered by
+`tests/test_benchmark.py`.
+
+Baseline on the full index (SQL reasoner, `k = 10`):
+
+| Mode | Queries | Recall@10 | MRR | Latency |
+| --- | ---: | ---: | ---: | ---: |
+| `lexical` | 10 | 0.600 | 0.465 | about 6.7 s |
+
+The misses are informative: "mendesain bangunan" and "merawat hewan" rank
+adjacent fields (interior designers, family-medicine physicians) above the
+labelled target, which is the kind of gap `semantic` and lexicon work should
+close.
 
 ## Semantic retrieval (occupation-card embeddings)
 
@@ -260,7 +289,7 @@ it works across owlready2 versions. Override it per request with
 
 - Retrieval now has a semantic path, but the full-data build was not executed
   in this change: no numbers for embedding build time, vector-table size, or
-  Recall@k/MRR/nDCG are reported yet. The 61-test suite (1 skipped Pellet test)
+  Recall@k/MRR/nDCG are reported yet. The 68-test suite (1 skipped Pellet test)
   covers the plumbing with a deterministic test backend.
 - Candidate recall is no longer truncated; the lexical ranking of the data
   prompt is now checked manually. A small gold query set with Recall@k/MRR

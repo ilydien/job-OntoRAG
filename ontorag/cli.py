@@ -210,6 +210,101 @@ def cmd_recommend(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_benchmark(args: argparse.Namespace) -> int:
+    from .benchmark import BenchmarkResult, evaluate, load_gold_set
+    from .reasoning import JAVA_ENV
+
+    gold = load_gold_set(args.queries)
+    if not gold.queries:
+        print(f"no gold queries in {args.queries}", file=sys.stderr)
+        return 2
+    if getattr(args, "java", None):
+        os.environ[JAVA_ENV] = str(args.java)
+
+    default_education = args.education or gold.default_education or "S3"
+    if args.max_job_zone is not None:
+        default_job_zone = args.max_job_zone
+    elif gold.default_max_job_zone is not None:
+        default_job_zone = gold.default_max_job_zone
+    else:
+        default_job_zone = 5
+
+    modes = [mode.strip() for mode in args.retrieval.split(",") if mode.strip()]
+    allowed = {"auto", "semantic", "lexical", "hybrid"}
+    unknown = [mode for mode in modes if mode not in allowed]
+    if unknown:
+        print(f"unknown retrieval mode(s): {', '.join(unknown)}", file=sys.stderr)
+        return 2
+
+    results = []
+    for mode in modes:
+        try:
+            with _pipeline(args, args.reasoner, retrieval=mode) as pipeline:
+
+                def recommend(query, pipeline=pipeline):
+                    profile = pipeline.profile_from_text(
+                        query.text,
+                        language=query.language,
+                        education=query.education or default_education,
+                        max_job_zone=(
+                            query.max_job_zone
+                            if query.max_job_zone is not None
+                            else default_job_zone
+                        ),
+                    )
+                    return pipeline.recommend(profile, top_k=args.k, text=query.text)
+
+                results.append(evaluate(mode, recommend, gold.queries, k=args.k))
+        except Exception as exc:  # keep the remaining modes usable
+            results.append(
+                BenchmarkResult(
+                    mode=mode,
+                    k=args.k,
+                    query_count=len(gold.queries),
+                    recall_at_k=0.0,
+                    mrr=0.0,
+                    latency_seconds=0.0,
+                    error=str(exc),
+                )
+            )
+
+    if args.format == "json":
+        print(
+            json.dumps(
+                [result.as_dict() for result in results],
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
+
+    header = f"{'mode':<10} {'k':>3} {'queries':>7} {'recall@k':>9} {'MRR':>6} {'latency(s)':>10}"
+    print(header)
+    print("-" * len(header))
+    for result in results:
+        if result.error:
+            print(f"{result.mode:<10} {result.k:>3} {result.query_count:>7} {'n/a':>9} {'n/a':>6} {'n/a':>10}  {result.error}")
+        else:
+            print(
+                f"{result.mode:<10} {result.k:>3} {result.query_count:>7} "
+                f"{result.recall_at_k:>9.3f} {result.mrr:>6.3f} {result.latency_seconds:>10.2f}"
+            )
+    if args.verbose:
+        for result in results:
+            if result.error:
+                continue
+            print(f"\n[{result.mode}]")
+            for score in result.per_query:
+                marker = "hit" if score.recall_at_k > 0 else "MISS"
+                print(
+                    f"  {marker:>4} R@k={score.recall_at_k:.2f} RR={score.reciprocal_rank:.2f} "
+                    f"{score.text}"
+                )
+                print(f"       expected: {', '.join(score.expected_soc)}")
+                print(f"       ranked:   {', '.join(score.ranked_soc) or '-'}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m ontorag.cli",
@@ -284,6 +379,37 @@ def build_parser() -> argparse.ArgumentParser:
     recommend.add_argument("--out", default=None, help="write output to a file")
     _add_common_data_args(recommend)
     recommend.set_defaults(func=cmd_recommend)
+
+    benchmark = sub.add_parser(
+        "benchmark",
+        help="measure Recall@k/MRR of retrieval over the gold query set",
+    )
+    benchmark.add_argument(
+        "--queries",
+        default=str(config.DEFAULT_BENCHMARK_QUERIES),
+        help="gold query JSON file",
+    )
+    benchmark.add_argument("--k", type=int, default=10, help="cut-off for Recall@k")
+    benchmark.add_argument(
+        "--retrieval",
+        default="lexical,semantic,hybrid",
+        help="comma-separated retrieval modes to compare",
+    )
+    benchmark.add_argument("--reasoner", choices=["auto", "pellet", "sql"], default=None)
+    benchmark.add_argument("--education", default=None, help="override default education")
+    benchmark.add_argument(
+        "--max-job-zone", type=int, default=None, help="override default max job zone"
+    )
+    benchmark.add_argument("--format", choices=["table", "json"], default="table")
+    benchmark.add_argument("--verbose", action="store_true", help="per-query scores")
+    benchmark.add_argument("--embedding-model", default=None, help="sentence-transformers model id")
+    benchmark.add_argument(
+        "--java",
+        default=None,
+        help="Java executable or JAVA_HOME for Pellet (default: auto-detect)",
+    )
+    _add_common_data_args(benchmark)
+    benchmark.set_defaults(func=cmd_benchmark)
 
     return parser
 

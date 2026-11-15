@@ -1,0 +1,47 @@
+{
+  "_comment": "Gold career descriptions (Indonesian) with expected O*NET SOC codes. Benchmarks ranking quality, so it runs with a permissive profile (education S3, job zone 5) unless a query overrides it.",
+  "default_education": "S3",
+  "default_max_job_zone": 5,
+  "queries": [
+    {
+      "text": "Saya suka menganalisis data dan membangun model",
+      "expected_soc": ["15-2051.00", "15-2041.00", "15-2031.00"]
+    },
+    {
+      "text": "Saya suka membuat program komputer dan aplikasi",
+      "expected_soc": ["15-1252.00", "15-1251.00", "15-1254.00"]
+    },
+    {
+      "text": "Saya suka merawat dan membantu pasien di rumah sakit",
+      "expected_soc": ["29-1141.00", "29-1141.01", "29-1141.03"]
+    },
+    {
+      "text": "Saya suka mengajar anak-anak di sekolah dasar",
+      "expected_soc": ["25-2021.00"]
+    },
+    {
+      "text": "Saya suka mendesain bangunan dan tata ruang",
+      "expected_soc": ["17-1011.00"]
+    },
+    {
+      "text": "Saya suka memperbaiki mesin dan peralatan",
+      "expected_soc": ["49-9041.00", "49-9071.00"]
+    },
+    {
+      "text": "Saya suka menulis berita dan meliput peristiwa",
+      "expected_soc": ["27-3023.00"]
+    },
+    {
+      "text": "Saya suka menjual produk dan bernegosiasi dengan pelanggan",
+      "expected_soc": ["41-4012.00", "41-3091.00"]
+    },
+    {
+      "text": "Saya suka merawat hewan dan membantu dokter hewan",
+      "expected_soc": ["29-1131.00", "29-2056.00"]
+    },
+    {
+      "text": "Saya suka memasak dan menyiapkan makanan di restoran",
+      "expected_soc": ["35-1011.00", "35-2014.00"]
+    }
+  ]
+}
