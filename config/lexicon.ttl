@@ -87,7 +87,7 @@ lex:entry_negation a lex:LexicalEntry ;
 
 lex:entry_holland_realistic a lex:LexicalEntry ;
     rdfs:label "Realistic vocabulary"@en ;
-    lex:keyword "mesin", "alat", "peralatan", "konstruksi", "fisik", "lapangan", "praktik", "praktis", "teknisi", "memperbaiki", "outdoor", "machine", "tools", "construction", "physical", "hands-on", "repair" ;
+    lex:keyword "mesin", "alat", "peralatan", "konstruksi", "bangunan", "arsitektur", "gedung", "hewan", "veteriner", "ternak", "fisik", "lapangan", "praktik", "praktis", "teknisi", "memperbaiki", "outdoor", "machine", "tools", "construction", "physical", "hands-on", "repair" ;
     lex:targetKind "holland" ;
     lex:target "Realistic" ;
     lex:weight "0.75"^^xsd:decimal .
@@ -109,6 +109,13 @@ lex:entry_phrase_build_structure a lex:LexicalEntry ;
 lex:entry_holland_investigative a lex:LexicalEntry ;
     rdfs:label "Investigative vocabulary"@en ;
     lex:keyword "riset", "penelitian", "meneliti", "analisis", "menganalisis", "data", "ilmiah", "sains", "logika", "eksperimen", "memecahkan", "model", "pemodelan", "statistik", "algoritma", "machine learning", "pembelajaran mesin", "pemrograman", "research", "analysis", "analyze", "data", "science", "scientific", "experiment", "problem solving" ;
+    lex:targetKind "holland" ;
+    lex:target "Investigative" ;
+    lex:weight "0.75"^^xsd:decimal .
+
+lex:entry_holland_investigative_animal a lex:LexicalEntry ;
+    rdfs:label "animal science vocabulary (Investigative)"@en ;
+    lex:keyword "hewan", "veteriner", "satwa" ;
     lex:targetKind "holland" ;
     lex:target "Investigative" ;
     lex:weight "0.75"^^xsd:decimal .
@@ -245,7 +252,7 @@ lex:entry_element_programming a lex:LexicalEntry ;
 
 lex:entry_element_design a lex:LexicalEntry ;
     rdfs:label "design vocabulary"@en ;
-    lex:keyword "desain", "mendesain", "rancangan", "design", "designing" ;
+    lex:keyword "desain", "mendesain", "rancangan", "tata ruang", "penataan ruang", "design", "designing" ;
     lex:targetKind "element" ;
     lex:target "Design" ;
     lex:weight "0.60"^^xsd:decimal .
@@ -294,9 +301,16 @@ lex:entry_element_modeling_phrase a lex:LexicalEntry ;
 
 lex:entry_element_health a lex:LexicalEntry ;
     rdfs:label "health vocabulary"@en ;
-    lex:keyword "kesehatan", "medis", "dokter", "perawat", "merawat pasien", "health", "medical", "medicine", "nursing", "patient care" ;
+    lex:keyword "kesehatan", "medis", "dokter", "perawat", "pasien", "keperawatan", "perawatan", "rumah sakit", "merawat pasien", "health", "medical", "medicine", "nursing", "patient care" ;
     lex:targetKind "element" ;
     lex:target "Medicine and Dentistry" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_caring a lex:LexicalEntry ;
+    rdfs:label "patient care vocabulary"@en ;
+    lex:keyword "merawat", "membantu pasien", "perawatan pasien", "merawat pasien", "caring", "patient care" ;
+    lex:targetKind "element" ;
+    lex:target "Assisting and Caring for Others" ;
     lex:weight "0.60"^^xsd:decimal .
 
 lex:entry_element_law a lex:LexicalEntry ;
@@ -343,10 +357,17 @@ lex:entry_element_transportation a lex:LexicalEntry ;
 
 lex:entry_element_biology a lex:LexicalEntry ;
     rdfs:label "biology vocabulary"@en ;
-    lex:keyword "biologi", "makhluk hidup", "biology", "biological" ;
+    lex:keyword "biologi", "makhluk hidup", "hewan", "dokter hewan", "veteriner", "ternak", "satwa", "biology", "biological" ;
     lex:targetKind "element" ;
     lex:target "Biology" ;
     lex:weight "0.55"^^xsd:decimal .
+
+lex:entry_element_animal a lex:LexicalEntry ;
+    rdfs:label "animal service vocabulary"@en ;
+    lex:keyword "hewan", "dokter hewan", "veteriner", "satwa", "ternak", "animal" ;
+    lex:targetKind "element" ;
+    lex:target "Animal Service" ;
+    lex:weight "1.00"^^xsd:decimal .
 
 lex:entry_element_chemistry a lex:LexicalEntry ;
     rdfs:label "chemistry vocabulary"@en ;

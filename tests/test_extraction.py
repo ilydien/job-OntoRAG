@@ -30,6 +30,19 @@ class ExtractionTests(unittest.TestCase):
                     "Building and Construction",
                     "Bangunan dan Konstruksi",
                 ),
+                ElementInfo("urn:element:design", "Design", "Desain"),
+                ElementInfo(
+                    "urn:element:caring",
+                    "Assisting and Caring for Others",
+                    "Membantu dan Merawat Orang Lain",
+                ),
+                ElementInfo(
+                    "urn:element:medicine",
+                    "Medicine and Dentistry",
+                    "Kedokteran dan Kedokteran Gigi",
+                ),
+                ElementInfo("urn:element:biology", "Biology", "Biologi"),
+                ElementInfo("urn:element:animal", "Animal Service", "Layanan Hewan"),
             ]
         )
 
@@ -115,6 +128,47 @@ class ExtractionTests(unittest.TestCase):
         )
         self.assertNotIn("Realistic", profile.holland)
         self.assertNotIn("urn:element:building", profile.elements)
+
+    def test_patient_care_query_extracts_caring_element(self) -> None:
+        profile = extract_from_text(
+            "Saya suka merawat dan membantu pasien di rumah sakit.",
+            self.ontology,
+            self.lexicon,
+            self.catalog,
+            direct_element_weight=self.policy.direct_element_weight,
+            direct_element_min_length=self.policy.direct_element_min_length,
+        )
+        self.assertIn("Social", profile.holland)
+        self.assertIn("urn:element:caring", profile.elements)
+        self.assertIn("urn:element:medicine", profile.elements)
+
+    def test_animal_query_extracts_animal_service_and_biology(self) -> None:
+        profile = extract_from_text(
+            "Saya suka merawat hewan dan membantu dokter hewan.",
+            self.ontology,
+            self.lexicon,
+            self.catalog,
+            direct_element_weight=self.policy.direct_element_weight,
+            direct_element_min_length=self.policy.direct_element_min_length,
+        )
+        self.assertIn("urn:element:animal", profile.elements)
+        self.assertIn("urn:element:biology", profile.elements)
+        self.assertIn("Investigative", profile.holland)
+        self.assertIn("Realistic", profile.holland)
+
+    def test_architect_query_extracts_realistic_and_building(self) -> None:
+        profile = extract_from_text(
+            "Saya suka mendesain bangunan dan tata ruang.",
+            self.ontology,
+            self.lexicon,
+            self.catalog,
+            direct_element_weight=self.policy.direct_element_weight,
+            direct_element_min_length=self.policy.direct_element_min_length,
+        )
+        self.assertIn("Realistic", profile.holland)
+        self.assertIn("Artistic", profile.holland)
+        self.assertIn("urn:element:building", profile.elements)
+        self.assertIn("urn:element:design", profile.elements)
 
     def test_profile_ttl_contains_user_constraints(self) -> None:
         profile = extract_from_text(

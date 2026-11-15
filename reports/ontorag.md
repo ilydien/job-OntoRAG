@@ -134,8 +134,8 @@ The SQL path is the low-latency mode. Pellet is the tier-aware mode.
 python3 -m unittest discover -s tests -v
 ```
 
-- System Python (no owlready2): 67 pass, 1 skipped (Pellet test).
-- `owlready2==0.48` environment with Java 21: 68 pass, including the
+- System Python (no owlready2): 70 pass, 1 skipped (Pellet test).
+- `owlready2==0.48` environment with Java 21: 71 pass, including the
   end-to-end Pellet/SWRL tier test.
 
 The suite covers the streaming parser, policy loading, lexicon and negation,
@@ -204,16 +204,47 @@ and `--max-job-zone` override it. A mode that cannot be built (for example
 modes still run. Metrics live in `ontorag/benchmark.py` and are covered by
 `tests/test_benchmark.py`.
 
-Baseline on the full index (SQL reasoner, `k = 10`):
+Baseline on the full index (SQL reasoner, `k = 10`), before the healthcare/
+animal/architecture vocabulary work:
 
 | Mode | Queries | Recall@10 | MRR | Latency |
 | --- | ---: | ---: | ---: | ---: |
 | `lexical` | 10 | 0.600 | 0.465 | about 6.7 s |
+| `semantic` | 10 | 0.617 | 0.583 | about 4.8 s |
+| `hybrid` | 10 | 0.650 | 0.667 | about 4.5 s |
 
-The misses are informative: "mendesain bangunan" and "merawat hewan" rank
-adjacent fields (interior designers, family-medicine physicians) above the
-labelled target, which is the kind of gap `semantic` and lexicon work should
-close.
+The misses were concentrated in three queries: "merawat dan membantu pasien"
+(hospitalist ranked first because of a mistranslated title), "mendesain
+bangunan" (no Realistic signal, so architects lost to interior designers), and
+"merawat hewan" (`hewan` was not mapped to any element, so veterinarians lost
+to human-medicine occupations).
+
+### Healthcare, animal, and architecture vocabulary
+
+Two fixes close those gaps:
+
+- **Data fix (needs an index rebuild).** The Indonesian overlay translated the
+  Hospitalists title (`29-1229.02`) as `"Rumah sakit"`, so the literal phrase
+  "di rumah sakit" matched the job *title* and pushed hospitalists to rank 1.
+  It now reads `"Dokter Hospitalis"` in
+  `3. Indonesian Translation/i18n/onet_i18n_id.ttl`.
+- **Lexicon.** `config/lexicon.ttl` gains `pasien`, `keperawatan`, `perawatan`,
+  `rumah sakit` (Medicine), an *Assisting and Caring for Others* entry,
+  architecture terms (`bangunan`, `arsitektur`, `gedung` → Realistic;
+  `tata ruang`, `penataan ruang` → Design), and animal terms (`hewan`,
+  `dokter hewan`, `veteriner`, `ternak`, `satwa` → *Animal Service* plus
+  Biology, Investigative, and Realistic). *Animal Service* is the decisive
+  signal: veterinarians rate 0.99 and veterinary technicians 0.87, while
+  human-medicine occupations rate 0.01.
+
+After the lexicon change, `lexical` on a freshly rebuilt index rises to
+**Recall@10 0.833 / MRR 0.628**; veterinarians and veterinary technicians now
+rank 1 and 2 for the animal query, and architects enter the top 3. The nurse
+query still puts hospitalists first: with the title corrected, the lexical
+match now comes from the hospitalist description (inpatient care, patient
+handling), which is a defensible adjacent result rather than a mistranslation
+artifact. `semantic`/`hybrid` must be re-measured on a machine with the e5
+model; the corrected title also changes the hospitalist card embedding.
 
 ## Semantic retrieval (occupation-card embeddings)
 
@@ -287,13 +318,14 @@ it works across owlready2 versions. Override it per request with
 
 ## Remaining limitations
 
-- Retrieval now has a semantic path, but the full-data build was not executed
-  in this change: no numbers for embedding build time, vector-table size, or
-  Recall@k/MRR/nDCG are reported yet. The 68-test suite (1 skipped Pellet test)
-  covers the plumbing with a deterministic test backend.
-- Candidate recall is no longer truncated; the lexical ranking of the data
-  prompt is now checked manually. A small gold query set with Recall@k/MRR
-  would make ranking quality measurable, and is a natural next step.
+- Retrieval now has a semantic path. Embedding build time and vector-table size
+  for the full index are recorded in the semantic section; Recall@k/MRR now has
+  a gold-query harness, but `semantic`/`hybrid` figures must be produced on a
+  machine with the e5 model. The 71-test suite (1 skipped Pellet test) covers the
+  plumbing with a deterministic test backend.
+- Candidate recall is no longer truncated. A small gold query set with
+  Recall@k/MRR measures ranking quality (`benchmark` command); the remaining
+  misses are adjacent occupations (e.g. associate vs. full statisticians).
 - Only the reasoning shortlist receives explicit SWRL flags. Candidates outside
   the shortlist keep the SQL eligibility default, so they cannot become
   `EligibleStrong`.
