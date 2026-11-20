@@ -165,6 +165,27 @@ class Index:
                 result[str(row["occupation_iri"])].append(dict(row))
         return result
 
+    def related_for_many(self, occupation_iris: Iterable[str]) -> Dict[str, List[str]]:
+        """Batch-load related-occupation edges for several occupations at once.
+
+        Returns a mapping keyed by occupation IRI; occupations with no edges
+        map to an empty list.
+        """
+
+        unique = [str(iri) for iri in dict.fromkeys(occupation_iris) if iri]
+        result: Dict[str, List[str]] = {iri: [] for iri in unique}
+        if not unique:
+            return result
+        template = self.sql("occupation_related_bulk.sql")
+        chunk_size = 900
+        for start in range(0, len(unique), chunk_size):
+            chunk = unique[start : start + chunk_size]
+            placeholders = ",".join("?" for _ in chunk)
+            sql = template.format(placeholders=placeholders)
+            for row in self.conn.execute(sql, chunk):
+                result[str(row["occupation_iri"])].append(str(row["related_iri"]))
+        return result
+
     def summary(self, occupation_iri: str) -> Optional[dict]:
         rows = self.query(
             "occupation_summary.sql",

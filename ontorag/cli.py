@@ -237,7 +237,7 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
         default_job_zone = 5
 
     modes = [mode.strip() for mode in args.retrieval.split(",") if mode.strip()]
-    allowed = {"auto", "semantic", "lexical", "hybrid"}
+    allowed = {"auto", "ontology", "semantic", "lexical", "hybrid"}
     unknown = [mode for mode in modes if mode not in allowed]
     if unknown:
         print(f"unknown retrieval mode(s): {', '.join(unknown)}", file=sys.stderr)
@@ -372,7 +372,7 @@ def build_parser() -> argparse.ArgumentParser:
     recommend.add_argument("--reasoner", choices=["auto", "pellet", "sql"], default=None)
     recommend.add_argument(
         "--retrieval",
-        choices=["auto", "semantic", "lexical", "hybrid"],
+        choices=["auto", "ontology", "semantic", "lexical", "hybrid"],
         default=None,
         help="candidate retrieval mode (default: ranking policy)",
     )

@@ -25,6 +25,8 @@ career:DefaultRankingPolicy a career:RankingPolicy ;
     career:lexicalNormalization "minmax" ;
     career:semanticNormalization "minmax" ;
     career:semanticCandidateLimit 2000 ;
+    career:ontologyNormalization "minmax" ;
+    career:ontologyCandidateLimit 2000 ;
     career:retrievalMode "auto" ;
     career:tierOrder "EligibleStrong" ;
     career:tierOrder "Eligible" ;
@@ -48,6 +50,7 @@ career:DefaultRankingPolicy a career:RankingPolicy ;
     career:hasRuleFile "rules/tier.swrl.ttl" ;
     career:hasComponent career:HollandComponent ;
     career:hasComponent career:ElementComponent ;
+    career:hasComponent career:OntologyComponent ;
     career:hasComponent career:SemanticComponent ;
     career:hasComponent career:LexicalComponent .
 
@@ -61,6 +64,12 @@ career:ElementComponent a career:ScoringComponent ;
     rdfs:label "O*NET element alignment"@en ;
     career:componentOrder 20 ;
     career:componentType "element" ;
+    career:componentWeight "0.30"^^xsd:decimal .
+
+career:OntologyComponent a career:ScoringComponent ;
+    rdfs:label "SPARQL ontology element match"@en ;
+    career:componentOrder 25 ;
+    career:componentType "ontology" ;
     career:componentWeight "0.30"^^xsd:decimal .
 
 career:SemanticComponent a career:ScoringComponent ;

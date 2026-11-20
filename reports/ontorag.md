@@ -139,9 +139,9 @@ The SQL path is the low-latency mode. Pellet is the tier-aware mode.
 python3 -m unittest discover -s tests -v
 ```
 
-- System Python (no owlready2): 75 pass, 2 skipped (Pellet and bundled-JRE tests).
-- `.venv` with `owlready2==0.48` and Java 21: 76 pass, 1 skipped (bundled-JRE
-  test), including the end-to-end Pellet/SWRL tier test.
+- System Python (no owlready2): 83 pass, 1 skipped (Pellet).
+- `.venv` with `owlready2==0.48` and Java 21: adds the end-to-end Pellet/SWRL
+  tier test; the bundled-JRE test still skips.
 
 The suite covers the streaming parser, policy loading, lexicon and negation,
 profile extraction, SQLite/FTS5 schema and candidate filters, batched element
@@ -308,13 +308,18 @@ Retrieval modes:
 | Mode | Behaviour |
 | --- | --- |
 | `auto` (default) | Semantic when the index has matching vectors and the model loads, otherwise lexical with an explicit warning. |
+| `ontology` | SPARQL alignment of the profile's element individuals against the index slice (`rdflib`); raises `GraphSearchUnavailable` when `rdflib` is absent. |
 | `semantic` | Cosine similarity only; missing/mismatched vectors raise `EmbeddingIndexMismatch`. |
 | `lexical` | The previous FTS5/BM25 path. |
-| `hybrid` | Both components are computed; the policy weights decide the mix. |
+| `hybrid` | Semantic + lexical as before; the policy weights decide the mix. |
 
-Component weights are now `holland 0.45 + element 0.30 + semantic 0.25 +
-lexical 0.15`; `score_candidates` renormalises over the components that were
-actually computed, so the lexical and semantic paths stay comparable.
+`ontology` is a separate mode: it does not fold into `hybrid`, so the verified
+semantic/hybrid benchmark numbers are unchanged.
+
+Component weights are now `holland 0.45 + element 0.30 + ontology 0.30 +
+semantic 0.25 + lexical 0.15`; `score_candidates` renormalises over the
+components that were actually computed, so the lexical, semantic, and ontology
+paths stay comparable.
 
 Provenance is stored in `embedding_meta` (`model`, `dim`, prefixes, card
 version, build time, vector count, and an index fingerprint) and is shown by
@@ -327,6 +332,60 @@ deterministic keyword backend, so it runs without `torch` or network access:
 ```bash
 python3 -m unittest discover -s tests -v
 ```
+
+## Ontology (SPARQL) retrieval
+
+Search has a path that queries the ontology rather than the profile text.
+`ontorag/graph_search.py` materialises the relevant slice of the ontology as
+RDF - occupations, their element ratings, and `career:relatedOccupation` edges -
+straight from the SQLite index (the raw 604 MB ABox is never loaded) and
+answers it with SPARQL through `rdflib`:
+
+1. **Direct match.** `VALUES (?element ?preference)` binds the profile's
+   element individuals and their preference weights, then joins
+   `career:hasElementRating` / `career:ratedElement` / `career:normalizedValue`
+   to sum `preference * value` per occupation.
+2. **One related-occupation hop.** The matched occupations are re-bound as
+   `VALUES (?seed ?seedScore)` and traversed along `career:relatedOccupation`,
+   adding `seedScore * 0.05` to each neighbour. This is the graph traversal a
+   text-similarity retriever cannot express. The decay is deliberately small:
+   high-degree medical hubs have about 20 related occupations, so a larger
+   factor lets their summed neighbour evidence swamp the direct element signal
+   (a 0.30 factor dropped the gold-set recall from 0.817 to 0.650).
+
+The two branches are separate queries: `rdflib` evaluates the combined JOIN
+about six times slower than the sum of the parts (about 3.5 s vs 20 s for a
+full pool), so the element match and the hop are issued independently and
+merged. `sparql_query` / `related_sparql_query` expose both query strings for
+audit. The scores enter ranking as the `ontology` component (policy weight
+0.30, min-max normalised) with an `ontology` evidence item on each result.
+
+```bash
+python3 -m ontorag.cli recommend --index data/onet_index.sqlite \
+  --text "Saya suka merawat hewan dan membantu dokter hewan" \
+  --language id --retrieval ontology --top-k 5
+```
+
+Because the two branches are pure SPARQL and every constant (element IRIs,
+normalised values, related edges) comes from the ontology, the ontology
+component is genuine graph search, not a re-labelled text score. When `rdflib`
+is not installed, `--retrieval ontology` fails loudly with
+`GraphSearchUnavailable` (rather than silently degrading), and `auto`/`hybrid`
+simply omit the component. `auto` keeps its previous meaning (semantic when
+vectors exist, else lexical) so the ontology path is opt-in.
+
+On the gold set (SQL reasoner, `k = 10`) the ontology component is the weakest
+single retriever but proves the graph path runs end to end:
+
+| Mode | Queries | Recall@10 | MRR | Latency |
+| --- | ---: | ---: | ---: | ---: |
+| `ontology` | 10 | 0.817 | 0.465 | about 41 s |
+
+The direct `VALUES` element match alone scores 0.600/0.343; the bounded hop
+lifts it to 0.817/0.465. The value is provenance plus the neighbourhood hop,
+not a higher headline number than `hybrid` (0.850/0.817).
+`tests/test_graph_search.py` covers the retrieval and the hop (skipped when
+`rdflib` is absent).
 
 ## Java runtime for Pellet
 

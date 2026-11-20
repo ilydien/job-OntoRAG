@@ -10,6 +10,11 @@ from typing import Dict, Iterable, List, Optional, Sequence
 from . import config
 from .embeddings import EmbeddingBackend, EmbeddingUnavailable, SentenceTransformerBackend
 from .extraction import ElementCatalog, Profile, extract_from_text
+from .graph_search import (
+    GraphSearchUnavailable,
+    ontology_available,
+    scores as ontology_scores,
+)
 from .lexicon import Lexicon
 from .ontology import Ontology
 from .policy import IndexPolicy, RankingPolicy, load_index_policy, load_ranking_policy
@@ -30,6 +35,7 @@ class Pipeline:
         reasoner: ReasoningService | None = None,
         retriever: SemanticRetriever | None = None,
         retrieval_mode: Optional[str] = None,
+        ontology_ready: bool = False,
     ) -> None:
         self.index = index
         self.ontology = ontology
@@ -38,6 +44,7 @@ class Pipeline:
         self.index_policy = index_policy
         self.reasoner = reasoner or SqlReasoner(policy.fallback_tier)
         self.retriever = retriever
+        self.ontology_ready = ontology_ready
         self.retrieval_mode = (retrieval_mode or policy.retrieval_mode or "auto").lower()
         self.catalog = ElementCatalog.from_rows(index.element_catalog_rows())
 
@@ -74,8 +81,15 @@ class Pipeline:
             temp_dir=temp_dir,
         )
         mode = (retrieval or policy.retrieval_mode or "auto").lower()
-        if mode not in {"auto", "semantic", "lexical", "hybrid"}:
+        if mode not in {"auto", "ontology", "semantic", "lexical", "hybrid"}:
             raise ValueError(f"unknown retrieval mode: {mode}")
+        ready = ontology_available()
+        if mode == "ontology" and not ready:
+            index.close()
+            raise GraphSearchUnavailable(
+                "ontology retrieval requested but rdflib is not installed; "
+                "install rdflib or use --retrieval semantic/lexical/hybrid"
+            )
         retriever: Optional[SemanticRetriever] = None
         if mode in {"auto", "semantic", "hybrid"}:
             # Check the cheap metadata first.  In auto mode an index without
@@ -117,7 +131,17 @@ class Pipeline:
                         file=sys.stderr,
                     )
                     mode = "lexical"
-        return cls(index, ontology, lexicon, policy, index_policy, reasoner, retriever, mode)
+        return cls(
+            index,
+            ontology,
+            lexicon,
+            policy,
+            index_policy,
+            reasoner,
+            retriever,
+            mode,
+            ontology_ready=ready,
+        )
 
     def close(self) -> None:
         self.index.close()
@@ -221,6 +245,22 @@ class Pipeline:
         )
         semantic_scores: Dict[str, float] = {}
         lexical_scores: Dict[str, float] = {}
+        ontology_scores_map: Dict[str, float] = {}
+        if (
+            self.retrieval_mode == "ontology"
+            and self.ontology_ready
+            and profile.elements
+            and element_rows is not None
+        ):
+            # The SPARQL path matches the profile's element individuals against
+            # the candidate occupations and traverses one related-occupation hop.
+            related_rows = self.index.related_for_many(candidate_iris)
+            ontology_scores_map = ontology_scores(
+                element_rows,
+                related_rows,
+                profile.elements,
+                self.policy.ontology_candidate_limit,
+            )
         if self.retrieval_mode in {"semantic", "hybrid"}:
             if self.retriever is None:
                 raise RuntimeError("semantic retrieval requested but no retriever is configured")
@@ -232,7 +272,9 @@ class Pipeline:
                 candidate_iris,
                 self.policy.semantic_candidate_limit,
             )
-        if self.retrieval_mode in {"lexical", "hybrid"} or not semantic_scores:
+        if self.retrieval_mode in {"lexical", "hybrid"} or (
+            self.retrieval_mode in {"auto", "semantic"} and not semantic_scores
+        ):
             lexical_scores = self.index.lexical_scores(
                 self._lexical_query(query_text or "", profile),
                 self.policy.lexical_candidate_limit,
@@ -248,6 +290,7 @@ class Pipeline:
             candidates,
             lexical_scores=lexical_scores,
             semantic_scores=semantic_scores,
+            ontology_scores=ontology_scores_map,
             element_rows=element_rows,
             top_k=self.policy.reasoning_candidate_limit,
         )
@@ -263,6 +306,7 @@ class Pipeline:
             candidates,
             lexical_scores=lexical_scores,
             semantic_scores=semantic_scores,
+            ontology_scores=ontology_scores_map,
             reasoning_flags=reasoning_flags,
             element_rows=element_rows,
             top_k=top_k or self.policy.top_k,
@@ -342,6 +386,22 @@ class Pipeline:
                         f"normalized cosine similarity to the occupation card ({model})",
                     ),
                     "value": recommendation.component_scores["semantic"],
+                }
+            )
+
+        if "ontology" in recommendation.component_scores:
+            evidence.append(
+                {
+                    "kind": "ontology",
+                    "label": self._t(
+                        language, "Kecocokan ontology (SPARQL)", "Ontology match (SPARQL)"
+                    ),
+                    "detail": self._t(
+                        language,
+                        "kecocokan individual elemen O*NET via SPARQL, termasuk satu hop okupasi terkait",
+                        "O*NET element-individual match via SPARQL, including one related-occupation hop",
+                    ),
+                    "value": recommendation.component_scores["ontology"],
                 }
             )
 

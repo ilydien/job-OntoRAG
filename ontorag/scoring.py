@@ -176,14 +176,17 @@ def score_candidates(
     top_k: Optional[int] = None,
     semantic_scores: Optional[Mapping[str, float]] = None,
     semantic_normalization: Optional[str] = None,
+    ontology_scores: Optional[Mapping[str, float]] = None,
+    ontology_normalization: Optional[str] = None,
     element_rows: Optional[Mapping[str, Sequence[Mapping[str, object]]]] = None,
 ) -> List[Recommendation]:
     """Score and rank candidate rows.
 
-    Retrieval evidence is optional: ``semantic_scores`` (cosine similarity)
-    and ``lexical_scores`` (BM25) are only added to a row when the caller
-    computed them for this request.  Relative component weights are
-    renormalised over the components that are actually available.
+    Retrieval evidence is optional: ``semantic_scores`` (cosine similarity),
+    ``lexical_scores`` (BM25), and ``ontology_scores`` (SPARQL element
+    alignment) are only added to a row when the caller computed them for this
+    request.  Relative component weights are renormalised over the components
+    that are actually available.
 
     ``element_rows`` is an optional pre-fetched mapping (see
     :meth:`Index.elements_for_many`) so the whole pool shares one batch
@@ -192,6 +195,7 @@ def score_candidates(
 
     lexical_scores = lexical_scores or {}
     semantic_scores = semantic_scores or {}
+    ontology_scores = ontology_scores or {}
     reasoning_flags = reasoning_flags or {}
     candidate_iris = [str(row["iri"]) for row in candidates]
     normalized_lexical = normalize_lexical(
@@ -201,6 +205,11 @@ def score_candidates(
         semantic_scores,
         candidate_iris,
         semantic_normalization or policy.semantic_normalization,
+    )
+    normalized_ontology = normalize_lexical(
+        ontology_scores,
+        candidate_iris,
+        ontology_normalization or policy.ontology_normalization,
     )
     if (
         element_rows is None
@@ -233,6 +242,8 @@ def score_candidates(
             component_values["lexical"] = normalized_lexical.get(iri, 0.0)
         if semantic_scores:
             component_values["semantic"] = normalized_semantic.get(iri, 0.0)
+        if ontology_scores:
+            component_values["ontology"] = normalized_ontology.get(iri, 0.0)
 
         available_weight = sum(weights.get(name, 0.0) for name in component_values)
         if available_weight > 0:

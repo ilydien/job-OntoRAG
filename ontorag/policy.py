@@ -57,6 +57,8 @@ class RankingPolicy:
     retrieval_mode: str = "auto"
     semantic_normalization: str = "minmax"
     semantic_candidate_limit: int = 2000
+    ontology_normalization: str = "minmax"
+    ontology_candidate_limit: int = 2000
     embedding_model: Optional[str] = None
     metadata: Dict[str, object] = field(default_factory=dict)
 
@@ -229,6 +231,8 @@ def load_ranking_policy(path: str | Path = config.DEFAULT_POLICY) -> RankingPoli
         retrieval_mode=optional_string(config.CAREER + "retrievalMode", "auto") or "auto",
         semantic_normalization=optional_string(config.CAREER + "semanticNormalization", "minmax") or "minmax",
         semantic_candidate_limit=optional_int(config.CAREER + "semanticCandidateLimit", 2000),
+        ontology_normalization=optional_string(config.CAREER + "ontologyNormalization", "minmax") or "minmax",
+        ontology_candidate_limit=optional_int(config.CAREER + "ontologyCandidateLimit", 2000),
         embedding_model=optional_string(config.CAREER + "embeddingModel"),
     )
 
