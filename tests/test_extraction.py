@@ -170,6 +170,64 @@ class ExtractionTests(unittest.TestCase):
         self.assertIn("urn:element:building", profile.elements)
         self.assertIn("urn:element:design", profile.elements)
 
+    def test_no_degree_maps_to_high_school(self) -> None:
+        profile = extract_from_text(
+            "Saya suka musik, tetapi saya belum memiliki gelar apapun.",
+            self.ontology,
+            self.lexicon,
+            self.catalog,
+            direct_element_weight=self.policy.direct_element_weight,
+            direct_element_min_length=self.policy.direct_element_min_length,
+        )
+        self.assertEqual(profile.education_local, "Level2_HighSchool")
+        self.assertTrue(any(item["kind"] == "education" for item in profile.evidence))
+
+    def test_current_student_maps_to_prospective_s1(self) -> None:
+        profile = extract_from_text(
+            "Saya sedang belajar di program studi Sains Data.",
+            self.ontology,
+            self.lexicon,
+            self.catalog,
+            direct_element_weight=self.policy.direct_element_weight,
+            direct_element_min_length=self.policy.direct_element_min_length,
+        )
+        self.assertEqual(profile.education_local, "S1")
+        self.assertIn("urn:element:data", profile.elements)
+        self.assertIn("urn:element:programming", profile.elements)
+
+    def test_data_science_phrase_does_not_duplicate_data_evidence(self) -> None:
+        profile = extract_from_text(
+            "Saya suka menganalisis dan eksplorasi data serta visualisasi data.",
+            self.ontology,
+            self.lexicon,
+            self.catalog,
+            direct_element_weight=self.policy.direct_element_weight,
+            direct_element_min_length=self.policy.direct_element_min_length,
+        )
+        data_holland = [
+            item
+            for item in profile.evidence
+            if item.get("kind") == "holland"
+            and item.get("target") == "Investigative"
+            and item.get("text", "").lower() == "data"
+        ]
+        spans = {(item["start"], item["end"]) for item in data_holland}
+        self.assertEqual(len(spans), len(data_holland))
+        self.assertTrue(data_holland)
+        self.assertIn("urn:element:data", profile.elements)
+
+    def test_web_pipeline_phrase_maps_to_programming(self) -> None:
+        profile = extract_from_text(
+            "Saya suka develop web dan membangun pipeline data.",
+            self.ontology,
+            self.lexicon,
+            self.catalog,
+            direct_element_weight=self.policy.direct_element_weight,
+            direct_element_min_length=self.policy.direct_element_min_length,
+        )
+        self.assertIn("urn:element:programming", profile.elements)
+        self.assertNotIn("urn:element:building", profile.elements)
+
     def test_profile_ttl_contains_user_constraints(self) -> None:
         profile = extract_from_text(
             "Saya lulusan D3, suka mengajar, job zone 3.",

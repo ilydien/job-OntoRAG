@@ -26,6 +26,8 @@ class Recommendation:
     element_matches: List[dict] = field(default_factory=list)
     evidence: List[dict] = field(default_factory=list)
     explanation: str = ""
+    description_en: Optional[str] = None
+    description_id: Optional[str] = None
     row: dict = field(default_factory=dict)
     rank: int = 0
 
@@ -33,6 +35,18 @@ class Recommendation:
         if lang == "id" and self.title_id:
             return self.title_id
         return self.title_en or self.title_id or self.occupation_iri
+
+    def display_description(self, lang: str = "id", limit: int = 0) -> str:
+        value = (
+            self.description_id
+            if lang == "id" and self.description_id
+            else (self.description_en or self.description_id or "")
+        )
+        text = " ".join(str(value).split())
+        if limit and len(text) > limit:
+            shortened = text[:limit].rsplit(" ", 1)[0].rstrip()
+            return (shortened or text[:limit]).rstrip() + "..."
+        return text
 
 
 def holland_score(
@@ -229,8 +243,7 @@ def score_candidates(
         else:
             combined = 0.0
 
-        default_tier = "Eligible" if policy.require_eligible else "Eligible"
-        tier = _tier_from_flags(reasoning_flags.get(iri), default_tier)
+        tier = _tier_from_flags(reasoning_flags.get(iri), policy.fallback_tier)
         if policy.require_eligible and tier == "NotEligible":
             continue
 

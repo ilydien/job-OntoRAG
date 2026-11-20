@@ -46,9 +46,11 @@ class PipelineSqlTests(unittest.TestCase):
             ttl = recommendations_ttl(profile, recommendations, pipeline.ontology)
         self.assertIn("career:Recommendation", ttl)
         self.assertIn("career:recommendationScore", ttl)
+        self.assertIn("career:recommendationDescription", ttl)
         self.assertEqual(len(recommendations), 1)
         recommendation = recommendations[0]
         self.assertEqual(recommendation.title_en, "Data Scientist")
+        self.assertEqual(recommendation.description_en, "Analyze data and build models.")
         self.assertEqual(recommendation.tier, "Eligible")
         self.assertGreater(recommendation.score, 0.0)
         self.assertIn("holland", recommendation.component_scores)
@@ -57,7 +59,7 @@ class PipelineSqlTests(unittest.TestCase):
 
     def test_sql_reasoner_marks_sql_candidates_eligible(self) -> None:
         rows = [{"iri": "urn:occupation:one"}, {"iri": "urn:occupation:two"}]
-        flags = SqlReasoner().infer(None, rows, None)  # type: ignore[arg-type]
+        flags = SqlReasoner("Eligible").infer(None, rows, None)  # type: ignore[arg-type]
         self.assertEqual(set(flags), {"urn:occupation:one", "urn:occupation:two"})
         self.assertTrue(all(item["tier"] == "Eligible" for item in flags.values()))
         self.assertTrue(all(not item["eligible_strong"] for item in flags.values()))

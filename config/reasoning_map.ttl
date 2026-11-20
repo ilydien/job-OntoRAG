@@ -52,3 +52,47 @@ career:DefaultReasoningSliceMap a career:ReasoningSliceMap ;
     career:sliceJobZoneRatingClass :JobZoneRating ;
     career:sliceRatedJobZoneProperty :ratedJobZone ;
     career:sliceJobZoneProperty :jobZone .
+
+# =============================================================================
+# Inferred-class -> output-tier mapping
+# =============================================================================
+# The adapter reads inferred class IRIs and tier labels from this map instead
+# of embedding the ontology vocabulary in reasoning.py.
+
+career:ReasoningOutputMap a owl:Class ;
+    rdfs:label "Reasoning output mapping"@en .
+
+career:outputEligibleClass a owl:ObjectProperty ;
+    rdfs:label "inferred eligible class"@en .
+
+career:outputStrongClass a owl:ObjectProperty ;
+    rdfs:label "inferred strong class"@en .
+
+career:outputStrongHollandClass a owl:ObjectProperty ;
+    rdfs:label "inferred strong-Holland class"@en .
+
+career:outputMissingEducationClass a owl:ObjectProperty ;
+    rdfs:label "inferred missing-education class"@en .
+
+career:outputMissingJobZoneClass a owl:ObjectProperty ;
+    rdfs:label "inferred missing-job-zone class"@en .
+
+career:outputStrongTier a owl:DatatypeProperty ;
+    rdfs:label "strong output tier label"@en .
+
+career:outputEligibleTier a owl:DatatypeProperty ;
+    rdfs:label "eligible output tier label"@en .
+
+career:outputNotEligibleTier a owl:DatatypeProperty ;
+    rdfs:label "not-eligible output tier label"@en .
+
+career:DefaultReasoningOutputMap a career:ReasoningOutputMap ;
+    rdfs:label "Default reasoning output mapping"@en ;
+    career:outputEligibleClass career:EligibleOccupation ;
+    career:outputStrongClass career:EligibleStrong ;
+    career:outputStrongHollandClass career:StrongHollandMatch ;
+    career:outputMissingEducationClass career:MissingEducation ;
+    career:outputMissingJobZoneClass career:MissingJobZone ;
+    career:outputStrongTier "EligibleStrong" ;
+    career:outputEligibleTier "Eligible" ;
+    career:outputNotEligibleTier "NotEligible" .

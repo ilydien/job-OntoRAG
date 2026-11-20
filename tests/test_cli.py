@@ -74,6 +74,8 @@ class CliTests(unittest.TestCase):
         payload = json.loads(out)
         self.assertEqual(payload["recommendations"][0]["tier"], "Eligible")
         self.assertEqual(payload["recommendations"][0]["title_en"], "Data Scientist")
+        self.assertIn("description", payload["recommendations"][0])
+        self.assertTrue(payload["recommendations"][0]["description"])
 
 
 if __name__ == "__main__":

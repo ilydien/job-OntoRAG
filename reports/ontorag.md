@@ -1,6 +1,6 @@
 # OntoRAG implementation validation
 
-Date: 2026-11-14
+Date: 2026-11-19
 
 ## Inputs kept unchanged
 
@@ -8,7 +8,7 @@ Date: 2026-11-14
 | --- | --- | --- |
 | `onet_abox.ttl` | `23c414c455c49f66a4464c2187e8c9c265ea401d0ff8e1dfa76ae5b75f2123aa` | 604,608,637 B |
 | `onet_merged.ttl` | `2e53fbf2e50ea258c018f4f34db419a3ec20b4e71cb8c35ed6c8aa8cf882df24` | 434,017,563 B |
-| `schema/onet_schema_en.ttl` | `ae82768885ba67a7bdb5098bdfda97845258acdb6dadbe07fa90c466ec1a32aa` | 56,291 B |
+| `schema/onet_schema_en.ttl` | `a51c78bb419bb8dce7565fa90bc517ca35d2525e96967c330bb6259b76d1ec1a` | 54,578 B |
 | `i18n-20261114T035836Z-1-001/onet_i18n_id.ttl` | `70673a830b514758b91546dfb21eee641100458c4c0042bab58b9a77c4fac311` | about 20 MB |
 
 The root `onet_schema.ttl` still has 78 `@id` labels and is not loaded by
@@ -83,9 +83,10 @@ Saya suka riset, analisis data, matematika, dan pemrograman.
 Saya lulusan S1 dan ingin job zone 4. Saya tidak suka menjual.
 ```
 
-produced five `EligibleStrong` results with Pellet and five `Eligible` results
-with the SQL fallback. The ranking order and scores were identical; only the
-logical tier differed, as expected.
+produced five `EligibleStrong` results with Pellet. On the lexical-only path the
+SQL fallback produced the same scores and order, but only `Eligible` tiers; the
+logical tier is the expected difference. With `--retrieval auto` and built
+embeddings, the semantic component participates in the score as well.
 
 The bundled HermiT rejects SWRL built-in atoms as unsupported. It remains
 useful for OWL 2 DL/TBox validation, but Pellet is the runtime rule engine.
@@ -94,24 +95,28 @@ ABox slices as consistent, while the deliberate D3/S1 disjointness probe is
 inconsistent as expected. If Pellet is unavailable, `--reasoner auto` falls
 back to SQL and warns on stderr.
 
-## Example top-5 output (Pellet)
+## Example top-5 output (auto retrieval + Pellet)
+
+For the sample profile above, with embeddings built:
 
 | Rank | Tier | Score | Occupation |
 | ---: | --- | ---: | --- |
-| 1 | EligibleStrong | 0.8046 | Social Science Research Assistants |
-| 2 | EligibleStrong | 0.7645 | Remote Sensing Scientists and Technologists |
-| 3 | EligibleStrong | 0.7369 | Materials Scientists |
-| 4 | EligibleStrong | 0.7291 | Chemists |
-| 5 | EligibleStrong | 0.7274 | Hydrologists |
+| 1 | EligibleStrong | 0.9391 | Data Scientists |
+| 2 | EligibleStrong | 0.9023 | Software Developers |
+| 3 | EligibleStrong | 0.8804 | Social Science Research Assistants |
+| 4 | EligibleStrong | 0.8656 | Remote Sensing Scientists and Technologists |
+| 5 | EligibleStrong | 0.8523 | Geographers |
 
 Each result includes:
 
 - logical tier and generic component scores;
 - Holland alignment;
 - normalized element ratings;
+- optional semantic occupation-card similarity;
 - FTS5/BM25 lexical similarity, explicitly labeled lexical;
 - negation-aware lexical retrieval (negated target phrases are masked from the
   FTS query while the audit text is kept);
+- occupation description, available in the table detail, JSON, and TTL output;
 - minimum education and job zone evidence;
 - representative tasks and related job titles;
 - an Indonesian explanation when using the default language.
@@ -134,9 +139,9 @@ The SQL path is the low-latency mode. Pellet is the tier-aware mode.
 python3 -m unittest discover -s tests -v
 ```
 
-- System Python (no owlready2): 70 pass, 1 skipped (Pellet test).
-- `owlready2==0.48` environment with Java 21: 71 pass, including the
-  end-to-end Pellet/SWRL tier test.
+- System Python (no owlready2): 75 pass, 2 skipped (Pellet and bundled-JRE tests).
+- `.venv` with `owlready2==0.48` and Java 21: 76 pass, 1 skipped (bundled-JRE
+  test), including the end-to-end Pellet/SWRL tier test.
 
 The suite covers the streaming parser, policy loading, lexicon and negation,
 profile extraction, SQLite/FTS5 schema and candidate filters, batched element
@@ -246,6 +251,32 @@ handling), which is a defensible adjacent result rather than a mistranslation
 artifact. `semantic`/`hybrid` must be re-measured on a machine with the e5
 model; the corrected title also changes the hospitalist card embedding.
 
+## Education, data/IT vocabulary, and output fixes
+
+The post-pull validation pass added:
+
+- Education phrases for `belum memiliki gelar` (`Level2_HighSchool`) and
+  `masih kuliah` / `sedang belajar di program studi` (treated as a prospective
+  `S1` candidate for career recommendations).
+- Data/IT vocabulary: `sains data`, `ilmu data`, `data science`,
+  `visualisasi data`, `eksplorasi data`, `develop web`, `pengembangan web`,
+  `pipeline data`, and related phrases.
+- Overlap-aware lexicon matching and keyword deduplication, so a phrase such as
+  `menganalisis dan ekplorasi data` is not counted twice and the duplicated
+  `data` keyword no longer produces duplicate evidence.
+- Canonical element labels are appended to the FTS query, so a typo such as
+  `pemrogaman` can still retrieve occupations whose documents use
+  `programming`.
+- `auto` retrieval checks embedding metadata before loading a
+  sentence-transformers model; an index without vectors falls back to lexical
+  retrieval immediately.
+- `Recommendation` now carries `description_en`/`description_id`. The CLI
+  table detail and JSON include the description, and TTL output emits
+  `career:recommendationDescription` with a policy-controlled preview length.
+- Inferred class IRIs and output tier labels are read from
+  `career:DefaultReasoningOutputMap` in `config/reasoning_map.ttl`; the SQL
+  fallback tier and evidence display limits come from the ranking policy.
+
 ## Semantic retrieval (occupation-card embeddings)
 
 Retrieval has a dense path alongside FTS5/BM25:
@@ -320,9 +351,9 @@ it works across owlready2 versions. Override it per request with
 
 - Retrieval now has a semantic path. Embedding build time and vector-table size
   for the full index are recorded in the semantic section; Recall@k/MRR now has
-  a gold-query harness, but `semantic`/`hybrid` figures must be produced on a
-  machine with the e5 model. The 71-test suite (1 skipped Pellet test) covers the
-  plumbing with a deterministic test backend.
+  a gold-query harness; the e5 model is available in this workspace and
+  occupation embeddings are built. The 75-test suite covers the plumbing with a
+  deterministic test backend and the optional Pellet path.
 - Candidate recall is no longer truncated. A small gold query set with
   Recall@k/MRR measures ranking quality (`benchmark` command); the remaining
   misses are adjacent occupations (e.g. associate vs. full statisticians).

@@ -51,6 +51,25 @@ lex:entry_education_sma a lex:LexicalEntry ;
     lex:target "Level2_HighSchool" ;
     lex:weight "1.0"^^xsd:decimal .
 
+lex:entry_education_no_degree a lex:LexicalEntry ;
+    rdfs:label "no-degree expressions"@en ;
+    lex:pattern "\\b(?:belum|tidak)\\s+(?:memiliki|punya|memperoleh|mengantongi)\\s+(?:gelar|ijazah)(?:\\s+apapun)?\\b" ;
+    lex:pattern "\\b(?:belum|tidak)\\s+bergelar\\b" ;
+    lex:pattern "\\bbelum\\s+(?:lulus\\s+)?(?:sarjana|kuliah|s1)\\b" ;
+    lex:targetKind "education" ;
+    lex:target "Level2_HighSchool" ;
+    lex:weight "1.0"^^xsd:decimal .
+
+lex:entry_education_in_progress a lex:LexicalEntry ;
+    rdfs:label "in-progress tertiary education expressions"@en ;
+    rdfs:comment "A current tertiary student is treated as a prospective bachelor-level candidate for career recommendations, not as a graduate."@en ;
+    lex:pattern "\\b(?:masih|sedang)\\s+(?:dalam\\s+masa\\s+)?(?:kuliah|belajar|menempuh|studi)\\b" ;
+    lex:pattern "\\b(?:mahasiswa|mahasiswi)\\b" ;
+    lex:pattern "\\b(?:semester|tingkat)\\s+[1-9][0-9]*\\b" ;
+    lex:targetKind "education" ;
+    lex:target "S1" ;
+    lex:weight "1.0"^^xsd:decimal .
+
 # -----------------------------------------------------------------------------
 # Job-zone and RIASEC-code patterns
 # -----------------------------------------------------------------------------
@@ -108,7 +127,7 @@ lex:entry_phrase_build_structure a lex:LexicalEntry ;
 
 lex:entry_holland_investigative a lex:LexicalEntry ;
     rdfs:label "Investigative vocabulary"@en ;
-    lex:keyword "riset", "penelitian", "meneliti", "analisis", "menganalisis", "data", "ilmiah", "sains", "logika", "eksperimen", "memecahkan", "model", "pemodelan", "statistik", "algoritma", "machine learning", "pembelajaran mesin", "pemrograman", "research", "analysis", "analyze", "data", "science", "scientific", "experiment", "problem solving" ;
+    lex:keyword "riset", "penelitian", "meneliti", "analisis", "menganalisis", "data", "ilmiah", "sains", "sains data", "ilmu data", "data science", "logika", "eksperimen", "memecahkan", "model", "pemodelan", "statistik", "algoritma", "machine learning", "pembelajaran mesin", "pemrograman", "research", "analysis", "analyze", "science", "scientific", "experiment", "problem solving" ;
     lex:targetKind "holland" ;
     lex:target "Investigative" ;
     lex:weight "0.75"^^xsd:decimal .
@@ -245,7 +264,9 @@ lex:entry_element_coordination a lex:LexicalEntry ;
 
 lex:entry_element_programming a lex:LexicalEntry ;
     rdfs:label "programming vocabulary"@en ;
-    lex:keyword "pemrograman", "coding", "program komputer", "software", "programming", "developer", "application", "python", "sql", "machine learning", "pembelajaran mesin" ;
+    lex:keyword "pemrograman", "pemrogaman", "coding", "program komputer", "software", "programming", "developer", "application", "python", "sql", "machine learning", "pembelajaran mesin", "sains data", "ilmu data", "data science", "data scientist", "data analyst", "analis data", "visualisasi data", "memvisualisasikan data", "web development", "pengembangan web", "develop web", "frontend", "front-end", "backend", "back-end", "full stack", "fullstack", "software developer", "web developer", "membangun aplikasi", "membangun sistem", "membangun pipeline", "pipeline data", "data pipeline", "alur data", "alur proses data" ;
+    lex:pattern "\\bpemrogr?aman\\b" ;
+    lex:pattern "\\b(?:membangun|mengembangkan|develop)\\s+(?:pipeline|alur(?:\\s+proses)?\\s+data|aplikasi|sistem|web)\\b" ;
     lex:targetKind "element" ;
     lex:target "Programming" ;
     lex:weight "0.65"^^xsd:decimal .
@@ -280,7 +301,8 @@ lex:entry_element_construction_phrase a lex:LexicalEntry ;
 
 lex:entry_element_data_analysis a lex:LexicalEntry ;
     rdfs:label "data analysis vocabulary"@en ;
-    lex:keyword "menganalisis data", "analisis data", "analitik data", "olah data", "data analysis", "data analytics" ;
+    lex:keyword "menganalisis data", "analisis data", "analitik data", "olah data", "mengolah data", "data analysis", "data analytics", "sains data", "ilmu data", "data science", "data scientist", "data analyst", "analis data", "visualisasi data", "memvisualisasikan data", "eksplorasi data", "ekplorasi data" ;
+    lex:pattern "\\b(?:menganalisis|analisis|eksplorasi|ekplorasi|mengolah|olah)\\s+(?:\\w+\\s+){0,3}data\\b" ;
     lex:targetKind "element" ;
     lex:target "Analyzing Data or Information" ;
     lex:weight "0.60"^^xsd:decimal .

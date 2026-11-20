@@ -29,6 +29,7 @@ class RankingPolicy:
     reasoning_candidate_limit: int
     lexical_candidate_limit: int
     require_eligible: bool
+    fallback_tier: str
     strong_holland_threshold: float
     strong_element_threshold: float
     tier_order: List[str]
@@ -39,6 +40,9 @@ class RankingPolicy:
     default_max_job_zone: int
     score_precision: int
     explanation_limit: int
+    task_evidence_limit: int
+    job_title_evidence_limit: int
+    description_preview_chars: int
     direct_element_weight: float
     direct_element_min_length: int
     holland_primary_weight: float
@@ -197,6 +201,7 @@ def load_ranking_policy(path: str | Path = config.DEFAULT_POLICY) -> RankingPoli
         reasoning_candidate_limit=required_int(config.CAREER + "reasoningCandidateLimit"),
         lexical_candidate_limit=required_int(config.CAREER + "lexicalCandidateLimit"),
         require_eligible=required_bool(config.CAREER + "requireEligible"),
+        fallback_tier=required_string(config.CAREER + "fallbackTier"),
         strong_holland_threshold=required_float(config.CAREER + "strongHollandThreshold"),
         strong_element_threshold=required_float(config.CAREER + "strongElementThreshold"),
         tier_order=tier_order,
@@ -207,6 +212,9 @@ def load_ranking_policy(path: str | Path = config.DEFAULT_POLICY) -> RankingPoli
         default_max_job_zone=required_int(config.CAREER + "defaultMaxJobZone"),
         score_precision=required_int(config.CAREER + "scorePrecision"),
         explanation_limit=required_int(config.CAREER + "explanationLimit"),
+        task_evidence_limit=required_int(config.CAREER + "taskEvidenceLimit"),
+        job_title_evidence_limit=required_int(config.CAREER + "jobTitleEvidenceLimit"),
+        description_preview_chars=required_int(config.CAREER + "descriptionPreviewChars"),
         direct_element_weight=required_float(config.CAREER + "directElementWeight"),
         direct_element_min_length=required_int(config.CAREER + "directElementMinLength"),
         holland_primary_weight=required_float(config.CAREER + "hollandPrimaryWeight"),

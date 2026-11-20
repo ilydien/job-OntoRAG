@@ -24,6 +24,9 @@ def recommendation_dict(
         "title_en": recommendation.title_en,
         "title_id": recommendation.title_id,
         "soc": recommendation.soc,
+        "description": recommendation.display_description(language),
+        "description_en": recommendation.description_en,
+        "description_id": recommendation.description_id,
         "component_scores": {
             key: round(value, precision)
             for key, value in recommendation.component_scores.items()
@@ -103,25 +106,32 @@ def recommendations_ttl(
     recommendations: Sequence[Recommendation],
     ontology: Ontology,
     language: str = "id",
+    description_limit: int | None = None,
 ) -> str:
     lines: List[str] = [profile.to_ttl(ontology), ""]
     user = normalize_iri(profile.user_iri)
     for item in recommendations:
         rec_iri = f"career:recommendation_{item.rank}_{_local_suffix(item.occupation_iri)}"
         reason = item.explanation or ""
+        description = item.display_description(language, limit=description_limit or 0)
         lang = "id" if (language or "id").lower() == "id" else "en"
-        lines.extend(
-            [
-                f"{rec_iri} a career:Recommendation ;",
-                f"    career:recommendationFor <{user}> ;",
-                f"    career:recommendedOccupation <{item.occupation_iri}> ;",
-                f"    career:recommendationRank \"{item.rank}\"^^xsd:positiveInteger ;",
-                f"    career:recommendationScore \"{format_decimal(item.score)}\"^^xsd:decimal ;",
-                f"    career:recommendationReason \"{_ttl_escape(reason)}\"@{lang} .",
-                f"<{user}> career:hasRecommendation {rec_iri} .",
-                "",
-            ]
+        predicates = [
+            f"    career:recommendationFor <{user}>",
+            f"    career:recommendedOccupation <{item.occupation_iri}>",
+            f"    career:recommendationRank \"{item.rank}\"^^xsd:positiveInteger",
+            f"    career:recommendationScore \"{format_decimal(item.score)}\"^^xsd:decimal",
+        ]
+        if description:
+            predicates.append(
+                f"    career:recommendationDescription \"{_ttl_escape(description)}\"@{lang}"
+            )
+        predicates.append(
+            f"    career:recommendationReason \"{_ttl_escape(reason)}\"@{lang}"
         )
+        lines.append(f"{rec_iri} a career:Recommendation ;")
+        lines.append(" ;\n".join(predicates) + " .")
+        lines.append(f"<{user}> career:hasRecommendation {rec_iri} .")
+        lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
 

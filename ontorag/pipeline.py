@@ -36,7 +36,7 @@ class Pipeline:
         self.lexicon = lexicon
         self.policy = policy
         self.index_policy = index_policy
-        self.reasoner = reasoner or SqlReasoner()
+        self.reasoner = reasoner or SqlReasoner(policy.fallback_tier)
         self.retriever = retriever
         self.retrieval_mode = (retrieval_mode or policy.retrieval_mode or "auto").lower()
         self.catalog = ElementCatalog.from_rows(index.element_catalog_rows())
@@ -78,28 +78,71 @@ class Pipeline:
             raise ValueError(f"unknown retrieval mode: {mode}")
         retriever: Optional[SemanticRetriever] = None
         if mode in {"auto", "semantic", "hybrid"}:
-            try:
-                backend = embedding_backend or SentenceTransformerBackend(
-                    embedding_model or policy.embedding_model or index_policy.embedding_model,
-                    batch_size=index_policy.embedding_batch_size,
+            # Check the cheap metadata first.  In auto mode an index without
+            # vectors must not pay the cost of downloading/loading a model
+            # only to discover that there is nothing to search.
+            embeddings = index.embedding_meta()
+            has_vectors = bool(embeddings) and int(embeddings.get("count", "0") or 0) > 0
+            if not has_vectors:
+                message = (
+                    "the index has no occupation embeddings; run "
+                    "'python -m ontorag.cli build-embeddings' first"
                 )
-                retriever = SemanticRetriever(index, backend)
                 if mode == "auto":
-                    mode = "semantic"
-            except (EmbeddingUnavailable, EmbeddingIndexMismatch) as exc:
-                if mode != "auto":
+                    print(
+                        f"warning: semantic retrieval unavailable ({message}); "
+                        "falling back to lexical FTS5 retrieval",
+                        file=sys.stderr,
+                    )
+                    mode = "lexical"
+                else:
                     index.close()
-                    raise
-                print(
-                    f"warning: semantic retrieval unavailable ({exc}); "
-                    "falling back to lexical FTS5 retrieval",
-                    file=sys.stderr,
-                )
-                mode = "lexical"
+                    raise EmbeddingIndexMismatch(message)
+            else:
+                try:
+                    backend = embedding_backend or SentenceTransformerBackend(
+                        embedding_model or policy.embedding_model or index_policy.embedding_model,
+                        batch_size=index_policy.embedding_batch_size,
+                    )
+                    retriever = SemanticRetriever(index, backend)
+                    if mode == "auto":
+                        mode = "semantic"
+                except (EmbeddingUnavailable, EmbeddingIndexMismatch) as exc:
+                    if mode != "auto":
+                        index.close()
+                        raise
+                    print(
+                        f"warning: semantic retrieval unavailable ({exc}); "
+                        "falling back to lexical FTS5 retrieval",
+                        file=sys.stderr,
+                    )
+                    mode = "lexical"
         return cls(index, ontology, lexicon, policy, index_policy, reasoner, retriever, mode)
 
     def close(self) -> None:
         self.index.close()
+
+    @staticmethod
+    def _lexical_query(text: str, profile: Profile) -> str:
+        """Use the profile text plus canonical extracted element labels.
+
+        The raw text remains the primary signal, but a typo such as
+        ``pemrogaman`` would otherwise never match the English/FTS label
+        ``Programming``.  Only positive element labels are added; negated
+        matches are already absent from ``profile.lexical_text``.
+        """
+
+        base = text or ""
+        lowered = base.lower()
+        labels = sorted(
+            {
+                str(label).strip()
+                for label in profile.element_labels.values()
+                if str(label).strip()
+            }
+        )
+        extra = [label for label in labels if label.lower() not in lowered]
+        return " ".join([base, *extra]).strip()
 
     def __enter__(self) -> "Pipeline":
         return self
@@ -191,7 +234,7 @@ class Pipeline:
             )
         if self.retrieval_mode in {"lexical", "hybrid"} or not semantic_scores:
             lexical_scores = self.index.lexical_scores(
-                query_text or "",
+                self._lexical_query(query_text or "", profile),
                 self.policy.lexical_candidate_limit,
                 self.index_policy.min_fts_token_length,
             )
@@ -235,6 +278,16 @@ class Pipeline:
     def _enrich(self, recommendation: Recommendation, profile: Profile) -> None:
         language = profile.language or self.policy.language_default
         summary = self.index.summary(recommendation.occupation_iri) or recommendation.row
+        recommendation.description_en = (
+            str(summary.get("description_en")).strip()
+            if summary.get("description_en")
+            else None
+        )
+        recommendation.description_id = (
+            str(summary.get("description_id")).strip()
+            if summary.get("description_id")
+            else None
+        )
         evidence: List[dict] = []
 
         holland_pairs = [
@@ -341,12 +394,14 @@ class Pipeline:
                 {
                     "kind": "tasks",
                     "label": self._t(language, "Tugas representatif", "Representative tasks"),
-                    "detail": "; ".join(task_text[:3]),
+                    "detail": "; ".join(task_text[: self.policy.task_evidence_limit]),
                     "value": len(task_text),
                 }
             )
 
-        titles = self.index.job_titles(recommendation.occupation_iri, 3)
+        titles = self.index.job_titles(
+            recommendation.occupation_iri, self.policy.job_title_evidence_limit
+        )
         if titles:
             title_text = [
                 str(title.get("title_id") or title.get("title_en") or "")

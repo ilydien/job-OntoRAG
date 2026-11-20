@@ -102,6 +102,21 @@ career:requireEligible a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:range xsd:boolean ;
     rdfs:label "require logical eligibility"@en .
 
+career:fallbackTier a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:string ;
+    rdfs:label "fallback logical tier"@en .
+
+career:taskEvidenceLimit a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:integer ;
+    rdfs:label "representative-task evidence limit"@en .
+
+career:jobTitleEvidenceLimit a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:integer ;
+    rdfs:label "related-job-title evidence limit"@en .
+
 career:strongHollandThreshold a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:domain career:RankingPolicy ;
     rdfs:range xsd:decimal ;
@@ -157,6 +172,11 @@ career:explanationLimit a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:domain career:RankingPolicy ;
     rdfs:range xsd:integer ;
     rdfs:label "explanation evidence limit"@en .
+
+career:descriptionPreviewChars a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:integer ;
+    rdfs:label "occupation-description preview length"@en .
 
 career:directElementWeight a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:domain career:RankingPolicy ;

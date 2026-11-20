@@ -1,0 +1,1661 @@
+@prefix : <https://www.onetcenter.org/rdf/schema/onet/> .
+@prefix career: <https://example.org/career#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# =============================================================================
+# O*NET Career Ontology - SROIQ(D) schema
+# =============================================================================
+# This file contains the TBox and RBox only.  The ABox lives in
+# onet_abox.ttl and imports this ontology.  The schema is intended for
+# TBox/RBox reasoning (consistency, classification, profile checking), not
+# for reasoning over the complete O*NET ABox.
+# =============================================================================
+
+<https://example.org/ontology/onet-schema> a owl:Ontology ;
+    rdfs:label "O*NET Career Ontology - SROIQ(D) Schema"@en ;
+    rdfs:comment "TBox and RBox for the O*NET 31.0 career-recommendation ontology. The ABox is stored separately in onet_abox.ttl."@en ;
+    owl:versionInfo "1.0" ;
+    dcterms:source <https://www.onetcenter.org/database.html> ;
+    dcterms:license <https://www.onetcenter.org/license_db.html> ;
+    dcterms:created "2026-11-02T00:00:00"^^xsd:dateTime ;
+    dcterms:modified "2026-11-02T00:00:00"^^xsd:dateTime .
+
+# =============================================================================
+# Annotation properties
+# =============================================================================
+
+:definition a owl:AnnotationProperty ;
+    rdfs:label "definition"@en ;
+    rdfs:comment "Human-readable definition of an ontology term."@en .
+
+:sourceTable a owl:AnnotationProperty ;
+    rdfs:label "source table"@en ;
+    rdfs:comment "Original O*NET table from which the term is derived."@en .
+
+dcterms:created a owl:AnnotationProperty .
+dcterms:license a owl:AnnotationProperty .
+dcterms:modified a owl:AnnotationProperty .
+dcterms:source a owl:AnnotationProperty .
+
+# =============================================================================
+# Top-level classes
+# =============================================================================
+
+:OnetEntity a owl:Class ;
+    rdfs:label "O*NET Entity"@en ;
+    rdfs:comment "Superclass of every O*NET resource represented in the ABox."@en .
+
+career:User a owl:Class ;
+    rdfs:label "User"@en ;
+    rdfs:comment "A person who receives career recommendations."@en .
+
+career:EducationLevel a owl:Class ;
+    rdfs:label "Education Level"@en ;
+    rdfs:comment "A canonical education level used to normalise O*NET education categories."@en .
+
+career:HollandCode a owl:Class ;
+    rdfs:label "Holland Code"@en ;
+    rdfs:comment "One of the six RIASEC interest types."@en .
+
+career:DataStatus a owl:Class ;
+    rdfs:label "Data Status"@en ;
+    rdfs:comment "Availability of rating data for an occupation."@en .
+
+# =============================================================================
+# O*NET class hierarchy (27 original classes)
+# =============================================================================
+
+:Occupation a owl:Class ;
+    rdfs:subClassOf :OnetEntity ;
+    rdfs:label "Occupation"@en ;
+    :definition "An O*NET-SOC occupation."@en ;
+    :sourceTable "Occupation" .
+
+:JobTitle a owl:Class ;
+    rdfs:subClassOf :OnetEntity ;
+    rdfs:label "Job Title"@en ;
+    :definition "A job title associated with an occupation."@en ;
+    :sourceTable "JobTitle" .
+
+:ReportedJobTitle a owl:Class ;
+    rdfs:subClassOf :OnetEntity ;
+    rdfs:label "Reported Job Title"@en ;
+    :definition "A job title reported by an incumbent."@en ;
+    :sourceTable "ReportedJobTitle" .
+
+:Task a owl:Class ;
+    rdfs:subClassOf :OnetEntity ;
+    rdfs:label "Task"@en ;
+    :definition "A work task performed in an occupation."@en ;
+    :sourceTable "Task" .
+
+:EmergingTask a owl:Class ;
+    rdfs:subClassOf :OnetEntity ;
+    rdfs:label "Emerging Task"@en ;
+    :definition "A newly emerging task associated with an occupation."@en ;
+    :sourceTable "EmergingTask" .
+
+:Element a owl:Class ;
+    rdfs:subClassOf :OnetEntity ;
+    rdfs:label "Element"@en ;
+    :definition "A descriptor element in the O*NET content model."@en ;
+    :sourceTable "Element" .
+
+:Scale a owl:Class ;
+    rdfs:subClassOf :OnetEntity ;
+    rdfs:label "Scale"@en ;
+    :definition "A rating scale used by O*NET."@en ;
+    :sourceTable "Scale" .
+
+:LevelScaleAnchor a owl:Class ;
+    rdfs:subClassOf :OnetEntity ;
+    rdfs:label "Level Scale Anchor"@en ;
+    :definition "An anchor description for a level scale."@en ;
+    :sourceTable "LevelScaleAnchor" .
+
+:Category a owl:Class ;
+    rdfs:subClassOf :OnetEntity ;
+    rdfs:label "Category"@en ;
+    :definition "Superclass of O*NET rating categories."@en .
+
+:TaskCategory a owl:Class ;
+    rdfs:subClassOf :Category ;
+    rdfs:label "Task Category"@en ;
+    :definition "A category of task frequency or importance."@en ;
+    :sourceTable "TaskCategory" .
+
+:EducationCategory a owl:Class ;
+    rdfs:subClassOf :Category ;
+    rdfs:label "Education Category"@en ;
+    :definition "An O*NET education category. There are two schemes (RL and RQ), each with twelve categories."@en ;
+    :sourceTable "EducationCategory" .
+
+:TrainingAndExperienceCategory a owl:Class ;
+    rdfs:subClassOf :Category ;
+    rdfs:label "Training and Experience Category"@en ;
+    :definition "A category of required training or experience."@en ;
+    :sourceTable "TrainingAndExperienceCategory" .
+
+:JobZone a owl:Class ;
+    rdfs:subClassOf :OnetEntity ;
+    rdfs:label "Job Zone"@en ;
+    :definition "An O*NET job zone describing preparation needed for an occupation."@en ;
+    :sourceTable "JobZone" .
+
+:Linkage a owl:Class ;
+    rdfs:subClassOf :OnetEntity ;
+    rdfs:label "Linkage"@en ;
+    :definition "Superclass of reified O*NET linkages."@en .
+
+:TaskDWALinkage a owl:Class ;
+    rdfs:subClassOf :Linkage ;
+    rdfs:label "Task-DWA Linkage"@en ;
+    :definition "A reified link between a task and a detailed work activity (DWA)."@en ;
+    :sourceTable "TaskDWALinkage" .
+
+:RelatedOccupationLinkage a owl:Class ;
+    rdfs:subClassOf :Linkage ;
+    rdfs:label "Related Occupation Linkage"@en ;
+    :definition "A reified link between an occupation and a related occupation."@en ;
+    :sourceTable "RelatedOccupationLinkage" .
+
+:Rating a owl:Class ;
+    rdfs:subClassOf :OnetEntity ;
+    rdfs:label "Rating"@en ;
+    :definition "Superclass of all O*NET rating records."@en .
+
+:ValuedRating a owl:Class ;
+    rdfs:subClassOf :Rating ;
+    rdfs:label "Valued Rating"@en ;
+    :definition "A rating that has exactly one numeric dataValue."@en .
+
+:TaskRating a owl:Class ;
+    rdfs:subClassOf :ValuedRating ;
+    rdfs:label "Task Rating"@en ;
+    :sourceTable "TaskRating" .
+
+:AbilitiesRating a owl:Class ;
+    rdfs:subClassOf :ValuedRating ;
+    rdfs:label "Abilities Rating"@en ;
+    :sourceTable "AbilitiesRating" .
+
+:WorkActivitiesRating a owl:Class ;
+    rdfs:subClassOf :ValuedRating ;
+    rdfs:label "Work Activities Rating"@en ;
+    :sourceTable "WorkActivitiesRating" .
+
+:SpecificInterestAreasRating a owl:Class ;
+    rdfs:subClassOf :ValuedRating ;
+    rdfs:label "Specific Interest Areas Rating"@en ;
+    :sourceTable "SpecificInterestAreasRating" .
+
+:KnowledgeRating a owl:Class ;
+    rdfs:subClassOf :ValuedRating ;
+    rdfs:label "Knowledge Rating"@en ;
+    :sourceTable "KnowledgeRating" .
+
+:TransferableSkillsRating a owl:Class ;
+    rdfs:subClassOf :ValuedRating ;
+    rdfs:label "Transferable Skills Rating"@en ;
+    :sourceTable "TransferableSkillsRating" .
+
+:TrainingAndExperienceRating a owl:Class ;
+    rdfs:subClassOf :ValuedRating ;
+    rdfs:label "Training and Experience Rating"@en ;
+    :sourceTable "TrainingAndExperienceRating" .
+
+:EssentialSkillsRating a owl:Class ;
+    rdfs:subClassOf :ValuedRating ;
+    rdfs:label "Essential Skills Rating"@en ;
+    :sourceTable "EssentialSkillsRating" .
+
+:EducationRating a owl:Class ;
+    rdfs:subClassOf :ValuedRating ;
+    rdfs:label "Education Rating"@en ;
+    :sourceTable "EducationRating" .
+
+:CareerInterestTypesRating a owl:Class ;
+    rdfs:subClassOf :ValuedRating ;
+    rdfs:label "Career Interest Types Rating"@en ;
+    :sourceTable "CareerInterestTypesRating" .
+
+:JobZoneRating a owl:Class ;
+    rdfs:subClassOf :Rating ;
+    rdfs:label "Job Zone Rating"@en ;
+    :definition "A rating that points to a JobZone but has no numeric dataValue."@en ;
+    :sourceTable "JobZoneRating" .
+
+:InterestsActivity a owl:Class ;
+    rdfs:subClassOf :OnetEntity ;
+    rdfs:label "Interests Activity"@en ;
+    :sourceTable "InterestsActivity" .
+
+:InterestsKeyword a owl:Class ;
+    rdfs:subClassOf :OnetEntity ;
+    rdfs:label "Interests Keyword"@en ;
+    :sourceTable "InterestsKeyword" .
+
+# =============================================================================
+# Disjointness: structural classes
+# =============================================================================
+
+[] a owl:AllDisjointClasses ;
+    owl:members (
+        :Occupation
+        :JobTitle
+        :ReportedJobTitle
+        :Task
+        :EmergingTask
+        :Element
+        :Scale
+        :LevelScaleAnchor
+        :Category
+        :JobZone
+        :Linkage
+        :Rating
+        :InterestsActivity
+        :InterestsKeyword
+    ) .
+
+[] a owl:AllDisjointClasses ;
+    owl:members ( :TaskCategory :EducationCategory :TrainingAndExperienceCategory ) .
+
+[] a owl:AllDisjointClasses ;
+    owl:members ( :TaskDWALinkage :RelatedOccupationLinkage ) .
+
+[] a owl:AllDisjointClasses ;
+    owl:members (
+        :TaskRating
+        :AbilitiesRating
+        :WorkActivitiesRating
+        :SpecificInterestAreasRating
+        :KnowledgeRating
+        :TransferableSkillsRating
+        :TrainingAndExperienceRating
+        :EssentialSkillsRating
+        :EducationRating
+        :CareerInterestTypesRating
+        :JobZoneRating
+    ) .
+
+:ValuedRating owl:disjointWith :JobZoneRating .
+
+career:User owl:disjointWith :OnetEntity .
+career:EducationLevel owl:disjointWith :OnetEntity .
+career:HollandCode owl:disjointWith :OnetEntity .
+career:DataStatus owl:disjointWith :OnetEntity .
+career:UserPreference owl:disjointWith :OnetEntity .
+career:Recommendation owl:disjointWith :OnetEntity .
+
+[] a owl:AllDisjointClasses ;
+    owl:members (
+        career:EducationLevel
+        career:HollandCode
+        career:DataStatus
+        career:User
+        career:UserPreference
+        career:Recommendation
+    ) .
+
+# =============================================================================
+# Object properties: core O*NET relations
+# =============================================================================
+
+:hasRating a owl:ObjectProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range :Rating ;
+    owl:inverseOf :ratingOf ;
+    rdfs:label "has rating"@en ;
+    rdfs:comment "Links an occupation to one of its rating records."@en .
+
+:ratingOf a owl:ObjectProperty ;
+    rdfs:domain :Rating ;
+    rdfs:range :Occupation ;
+    rdfs:label "rating of"@en .
+
+:hasTask a owl:ObjectProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range :Task ;
+    owl:inverseOf :taskOf ;
+    rdfs:label "has task"@en .
+
+:taskOf a owl:ObjectProperty ;
+    rdfs:domain :Task ;
+    rdfs:range :Occupation ;
+    rdfs:label "task of"@en .
+
+:hasJobTitle a owl:ObjectProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range :JobTitle ;
+    owl:inverseOf :jobTitleOf ;
+    rdfs:label "has job title"@en .
+
+:jobTitleOf a owl:ObjectProperty ;
+    rdfs:domain :JobTitle ;
+    rdfs:range :Occupation ;
+    rdfs:label "job title of"@en .
+
+:hasReportedTitle a owl:ObjectProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range :ReportedJobTitle ;
+    owl:inverseOf :reportedTitleOf ;
+    rdfs:label "has reported title"@en .
+
+:reportedTitleOf a owl:ObjectProperty ;
+    rdfs:domain :ReportedJobTitle ;
+    rdfs:range :Occupation ;
+    rdfs:label "reported title of"@en .
+
+:hasEmergingTask a owl:ObjectProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range :EmergingTask ;
+    owl:inverseOf :emergingTaskOf ;
+    rdfs:label "has emerging task"@en .
+
+:emergingTaskOf a owl:ObjectProperty ;
+    rdfs:domain :EmergingTask ;
+    rdfs:range :Occupation ;
+    rdfs:label "emerging task of"@en .
+
+:hasDWA a owl:ObjectProperty ;
+    rdfs:domain :Task ;
+    rdfs:range :TaskDWALinkage ;
+    owl:inverseOf :dwaOf ;
+    rdfs:label "has DWA linkage"@en .
+
+:dwaOf a owl:ObjectProperty ;
+    rdfs:domain :TaskDWALinkage ;
+    rdfs:range :Task ;
+    rdfs:label "DWA linkage of"@en .
+
+:hasRelatedOccupation a owl:ObjectProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range :RelatedOccupationLinkage ;
+    owl:inverseOf :relatedOccupationOf ;
+    rdfs:label "has related occupation linkage"@en .
+
+:relatedOccupationOf a owl:ObjectProperty ;
+    rdfs:domain :RelatedOccupationLinkage ;
+    rdfs:range :Occupation ;
+    rdfs:label "related occupation linkage of"@en .
+
+# =============================================================================
+# Object properties: generic and typed references
+# =============================================================================
+
+:refersTo a owl:ObjectProperty ;
+    rdfs:domain :OnetEntity ;
+    rdfs:range [
+        a owl:Class ;
+        owl:unionOf (
+            :Task
+            :Element
+            :Scale
+            :TaskCategory
+            :EducationCategory
+            :TrainingAndExperienceCategory
+            :JobZone
+            :Occupation
+        )
+    ] ;
+    owl:inverseOf :referencedBy ;
+    rdfs:label "refers to"@en ;
+    rdfs:comment "Generic O*NET reference relation. It is overloaded in the source data and is therefore typed by the subproperties below."@en .
+
+:referencedBy a owl:ObjectProperty ;
+    rdfs:domain :OnetEntity ;
+    rdfs:range :OnetEntity ;
+    rdfs:label "referenced by"@en .
+
+:ratedTask a owl:ObjectProperty ;
+    rdfs:subPropertyOf :refersTo ;
+    rdfs:domain :Rating ;
+    rdfs:range :Task ;
+    rdfs:label "rated task"@en .
+
+:ratedElement a owl:ObjectProperty ;
+    rdfs:subPropertyOf :refersTo ;
+    rdfs:domain :OnetEntity ;
+    rdfs:range :Element ;
+    rdfs:label "rated element"@en .
+
+:ratingScale a owl:ObjectProperty ;
+    rdfs:subPropertyOf :refersTo ;
+    rdfs:domain :OnetEntity ;
+    rdfs:range :Scale ;
+    rdfs:label "rating scale"@en .
+
+:ratingCategory a owl:ObjectProperty ;
+    rdfs:subPropertyOf :refersTo ;
+    rdfs:domain :OnetEntity ;
+    rdfs:range :Category ;
+    rdfs:label "rating category"@en .
+
+:ratedJobZone a owl:ObjectProperty ;
+    rdfs:subPropertyOf :refersTo ;
+    rdfs:domain :JobZoneRating ;
+    rdfs:range :JobZone ;
+    rdfs:label "rated job zone"@en .
+
+:dwaElement a owl:ObjectProperty ;
+    rdfs:subPropertyOf :refersTo ;
+    rdfs:domain :TaskDWALinkage ;
+    rdfs:range :Element ;
+    rdfs:label "DWA element"@en .
+
+:relatedOccupation a owl:ObjectProperty ;
+    rdfs:subPropertyOf :refersTo ;
+    rdfs:domain :RelatedOccupationLinkage ;
+    rdfs:range :Occupation ;
+    rdfs:label "related occupation"@en .
+
+# =============================================================================
+# Object properties: element hierarchy
+# =============================================================================
+
+:memberOf a owl:ObjectProperty, owl:FunctionalProperty, owl:IrreflexiveProperty ;
+    rdfs:domain :Element ;
+    rdfs:range :Element ;
+    rdfs:subPropertyOf :ancestorOf ;
+    owl:inverseOf :hasMember ;
+    rdfs:label "member of"@en ;
+    rdfs:comment "Direct parent relation of the O*NET element tree. It is functional and irreflexive but not transitive, so cardinality restrictions may safely use it."@en .
+
+:hasMember a owl:ObjectProperty ;
+    rdfs:domain :Element ;
+    rdfs:range :Element ;
+    rdfs:label "has member"@en .
+
+:ancestorOf a owl:ObjectProperty, owl:TransitiveProperty ;
+    rdfs:domain :Element ;
+    rdfs:range :Element ;
+    owl:inverseOf :hasDescendant ;
+    rdfs:label "ancestor of"@en ;
+    rdfs:comment "Transitive closure of memberOf. This property is non-simple; no cardinality restriction is placed on it. Irreflexivity is asserted on the simple direct-parent property memberOf, because OWL 2 DL does not allow an irreflexivity axiom on a non-simple property."@en .
+
+:hasDescendant a owl:ObjectProperty ;
+    rdfs:domain :Element ;
+    rdfs:range :Element ;
+    rdfs:label "has descendant"@en .
+
+# =============================================================================
+# Object properties: lateral and revision links
+# =============================================================================
+
+:linkedTo a owl:ObjectProperty ;
+    rdfs:subPropertyOf :relatedTo ;
+    rdfs:domain [
+        a owl:Class ;
+        owl:unionOf ( :Occupation :Task :Element )
+    ] ;
+    rdfs:range [
+        a owl:Class ;
+        owl:unionOf ( :Occupation :Element :InterestsKeyword )
+    ] ;
+    owl:inverseOf :linkedFrom ;
+    rdfs:label "linked to"@en ;
+    rdfs:comment "Generic lateral link. It is not symmetric in the source data."@en .
+
+:linkedFrom a owl:ObjectProperty ;
+    rdfs:label "linked from"@en .
+
+:relatedTo a owl:ObjectProperty, owl:IrreflexiveProperty ;
+    rdfs:domain :OnetEntity ;
+    rdfs:range :OnetEntity ;
+    rdfs:label "related to"@en ;
+    rdfs:comment "Superproperty of linkedTo. It is irreflexive but deliberately not symmetric."@en .
+
+:dwaFor a owl:ObjectProperty ;
+    rdfs:domain :Element ;
+    rdfs:range :Element ;
+    owl:inverseOf :dwaForInverse ;
+    rdfs:label "DWA for"@en ;
+    rdfs:comment "Element-to-element link used by detailed work activities."@en .
+
+:dwaForInverse a owl:ObjectProperty ;
+    rdfs:domain :Element ;
+    rdfs:range :Element ;
+    rdfs:label "inverse DWA for"@en .
+
+:iwaFor a owl:ObjectProperty ;
+    rdfs:domain :Element ;
+    rdfs:range :Element ;
+    owl:inverseOf :iwaForInverse ;
+    rdfs:label "IWA for"@en ;
+    rdfs:comment "Element-to-element link used by intermediate work activities."@en .
+
+:iwaForInverse a owl:ObjectProperty ;
+    rdfs:domain :Element ;
+    rdfs:range :Element ;
+    rdfs:label "inverse IWA for"@en .
+
+:illustratedBy a owl:ObjectProperty ;
+    rdfs:domain :Element ;
+    rdfs:range [
+        a owl:Class ;
+        owl:unionOf ( :Occupation :InterestsActivity )
+    ] ;
+    owl:inverseOf :illustrates ;
+    rdfs:label "illustrated by"@en .
+
+:illustrates a owl:ObjectProperty ;
+    rdfs:label "illustrates"@en .
+
+:revisionFor a owl:ObjectProperty ;
+    rdfs:domain :EmergingTask ;
+    rdfs:range :Task ;
+    owl:inverseOf :revisedBy ;
+    rdfs:label "revision for"@en ;
+    rdfs:comment "An emerging task revision points to the existing task it revises."@en .
+
+:revisedBy a owl:ObjectProperty ;
+    rdfs:domain :Task ;
+    rdfs:range :EmergingTask ;
+    rdfs:label "revised by"@en .
+
+# =============================================================================
+# Object properties: application layer
+# =============================================================================
+
+career:hasMinEducationLevel a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range career:EducationLevel ;
+    owl:inverseOf career:minEducationLevelOf ;
+    rdfs:label "has minimum education level"@en ;
+    rdfs:comment "Materialised from the EducationRating distribution (cumulative share >= 50%)."@en .
+
+career:minEducationLevelOf a owl:ObjectProperty ;
+    rdfs:domain career:EducationLevel ;
+    rdfs:range :Occupation ;
+    rdfs:label "minimum education level of"@en .
+
+career:educationLevel a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain :EducationCategory ;
+    rdfs:range career:EducationLevel ;
+    owl:inverseOf career:educationLevelOf ;
+    rdfs:label "education level"@en ;
+    rdfs:comment "Maps an O*NET EducationCategory individual to a canonical education level."@en .
+
+career:educationLevelOf a owl:ObjectProperty ;
+    rdfs:domain career:EducationLevel ;
+    rdfs:range :EducationCategory ;
+    rdfs:label "education level of"@en .
+
+career:hasDataStatus a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range career:DataStatus ;
+    owl:inverseOf career:dataStatusOf ;
+    rdfs:label "has data status"@en .
+
+career:dataStatusOf a owl:ObjectProperty ;
+    rdfs:domain career:DataStatus ;
+    rdfs:range :Occupation ;
+    rdfs:label "data status of"@en .
+
+career:hasPrimaryHollandCode a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range career:HollandCode ;
+    owl:inverseOf career:primaryHollandCodeOf ;
+    rdfs:label "has primary Holland code"@en .
+
+career:primaryHollandCodeOf a owl:ObjectProperty ;
+    rdfs:domain career:HollandCode ;
+    rdfs:range :Occupation ;
+    rdfs:label "primary Holland code of"@en .
+
+career:hasSecondaryHollandCode a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range career:HollandCode ;
+    owl:inverseOf career:secondaryHollandCodeOf ;
+    rdfs:label "has secondary Holland code"@en .
+
+career:secondaryHollandCodeOf a owl:ObjectProperty ;
+    rdfs:domain career:HollandCode ;
+    rdfs:range :Occupation ;
+    rdfs:label "secondary Holland code of"@en .
+
+career:hasTertiaryHollandCode a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range career:HollandCode ;
+    owl:inverseOf career:tertiaryHollandCodeOf ;
+    rdfs:label "has tertiary Holland code"@en .
+
+career:tertiaryHollandCodeOf a owl:ObjectProperty ;
+    rdfs:domain career:HollandCode ;
+    rdfs:range :Occupation ;
+    rdfs:label "tertiary Holland code of"@en .
+
+career:hasHollandCode a owl:ObjectProperty ;
+    rdfs:domain career:User ;
+    rdfs:range career:HollandCode ;
+    rdfs:label "has Holland code"@en .
+
+# =============================================================================
+# OntoRAG application profile vocabulary
+# =============================================================================
+# These terms describe user profiles and recommendation results.  They are
+# application-level assertions: preference weights and match scores are not
+# O*NET ratings.  The O*NET ABox remains unchanged.
+
+career:UserPreference a owl:Class ;
+    rdfs:label "User preference"@en ;
+    rdfs:comment "A scored preference in a user's career profile. Preferences are application-level assertions, not O*NET ratings."@en ;
+    rdfs:subClassOf [
+        a owl:Restriction ;
+        owl:onProperty career:preferenceWeight ;
+        owl:someValuesFrom [
+            a rdfs:Datatype ;
+            owl:onDatatype xsd:decimal ;
+            owl:withRestrictions (
+                [ xsd:minInclusive "0.0"^^xsd:decimal ]
+                [ xsd:maxInclusive "1.0"^^xsd:decimal ]
+            )
+        ]
+    ] .
+
+career:HollandPreference a owl:Class ;
+    rdfs:subClassOf career:UserPreference ;
+    rdfs:subClassOf [
+        a owl:Restriction ;
+        owl:onProperty career:preferenceHollandCode ;
+        owl:someValuesFrom career:HollandCode
+    ] ;
+    rdfs:label "Holland preference"@en ;
+    rdfs:comment "A RIASEC/Holland preference with an application-level score."@en .
+
+career:ElementPreference a owl:Class ;
+    rdfs:subClassOf career:UserPreference ;
+    rdfs:subClassOf [
+        a owl:Restriction ;
+        owl:onProperty career:preferenceElement ;
+        owl:someValuesFrom :Element
+    ] ;
+    rdfs:label "Element preference"@en ;
+    rdfs:comment "A preference for an O*NET Element, covering abilities, skills, knowledge, or work activities."@en .
+
+career:Recommendation a owl:Class ;
+    rdfs:label "Recommendation"@en ;
+    rdfs:comment "An application-level career recommendation produced by OntoRAG."@en ;
+    rdfs:subClassOf [
+        a owl:Restriction ;
+        owl:onProperty career:recommendationFor ;
+        owl:someValuesFrom career:User
+    ] ;
+    rdfs:subClassOf [
+        a owl:Restriction ;
+        owl:onProperty career:recommendedOccupation ;
+        owl:someValuesFrom :Occupation
+    ] ;
+    rdfs:subClassOf [
+        a owl:Restriction ;
+        owl:onProperty career:recommendationRank ;
+        owl:someValuesFrom xsd:positiveInteger
+    ] ;
+    rdfs:subClassOf [
+        a owl:Restriction ;
+        owl:onProperty career:recommendationScore ;
+        owl:someValuesFrom [
+            a rdfs:Datatype ;
+            owl:onDatatype xsd:decimal ;
+            owl:withRestrictions (
+                [ xsd:minInclusive "0.0"^^xsd:decimal ]
+                [ xsd:maxInclusive "1.0"^^xsd:decimal ]
+            )
+        ]
+    ] .
+
+career:HollandPreference owl:disjointWith career:ElementPreference .
+
+career:hasPreference a owl:ObjectProperty ;
+    rdfs:domain career:User ;
+    rdfs:range career:UserPreference ;
+    rdfs:label "has preference"@en ;
+    rdfs:comment "Links a user to a scored profile preference."@en .
+
+career:hasHollandPreference a owl:ObjectProperty ;
+    rdfs:subPropertyOf career:hasPreference ;
+    rdfs:domain career:User ;
+    rdfs:range career:HollandPreference ;
+    rdfs:label "has Holland preference"@en .
+
+career:hasElementPreference a owl:ObjectProperty ;
+    rdfs:subPropertyOf career:hasPreference ;
+    rdfs:domain career:User ;
+    rdfs:range career:ElementPreference ;
+    rdfs:label "has element preference"@en .
+
+career:preferenceHollandCode a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain career:HollandPreference ;
+    rdfs:range career:HollandCode ;
+    rdfs:label "preference Holland code"@en .
+
+career:preferenceElement a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain career:ElementPreference ;
+    rdfs:range :Element ;
+    rdfs:label "preference element"@en .
+
+career:preferenceWeight a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:UserPreference ;
+    rdfs:range [
+        a rdfs:Datatype ;
+        owl:onDatatype xsd:decimal ;
+        owl:withRestrictions (
+            [ xsd:minInclusive "0.0"^^xsd:decimal ]
+            [ xsd:maxInclusive "1.0"^^xsd:decimal ]
+        )
+    ] ;
+    rdfs:label "preference weight"@en ;
+    rdfs:comment "Application-level preference weight in [0,1]. This is not an O*NET rating."@en .
+
+career:hasEducationLevel a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain career:User ;
+    rdfs:range career:EducationLevel ;
+    owl:inverseOf career:userEducationLevelOf ;
+    rdfs:label "has education level"@en ;
+    rdfs:comment "The user's current or highest canonical education level, used for recommendation filtering."@en .
+
+career:userEducationLevelOf a owl:ObjectProperty ;
+    rdfs:domain career:EducationLevel ;
+    rdfs:range career:User ;
+    rdfs:label "user education level of"@en .
+
+career:maxJobZone a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:User ;
+    rdfs:range [
+        a rdfs:Datatype ;
+        owl:onDatatype xsd:integer ;
+        owl:withRestrictions (
+            [ xsd:minInclusive "1"^^xsd:integer ]
+            [ xsd:maxInclusive "5"^^xsd:integer ]
+        )
+    ] ;
+    rdfs:label "maximum job zone"@en ;
+    rdfs:comment "The highest O*NET job zone acceptable to the user."@en .
+
+career:hasRecommendation a owl:ObjectProperty ;
+    rdfs:domain career:User ;
+    rdfs:range career:Recommendation ;
+    owl:inverseOf career:recommendationFor ;
+    rdfs:label "has recommendation"@en .
+
+career:recommendationFor a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain career:Recommendation ;
+    rdfs:range career:User ;
+    rdfs:label "recommendation for"@en .
+
+career:recommendedOccupation a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain career:Recommendation ;
+    rdfs:range :Occupation ;
+    rdfs:label "recommended occupation"@en .
+
+career:recommendationRank a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:Recommendation ;
+    rdfs:range xsd:positiveInteger ;
+    rdfs:label "recommendation rank"@en .
+
+career:recommendationScore a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:Recommendation ;
+    rdfs:range [
+        a rdfs:Datatype ;
+        owl:onDatatype xsd:decimal ;
+        owl:withRestrictions (
+            [ xsd:minInclusive "0.0"^^xsd:decimal ]
+            [ xsd:maxInclusive "1.0"^^xsd:decimal ]
+        )
+    ] ;
+    rdfs:label "recommendation score"@en .
+
+career:recommendationReason a owl:DatatypeProperty ;
+    rdfs:domain career:Recommendation ;
+    rdfs:range rdfs:Literal ;
+    rdfs:label "recommendation reason"@en ;
+    rdfs:comment "A short, grounded explanation for the recommendation; may be language-tagged."@en .
+
+career:recommendationDescription a owl:DatatypeProperty ;
+    rdfs:domain career:Recommendation ;
+    rdfs:range rdfs:Literal ;
+    rdfs:label "recommendation description"@en ;
+    rdfs:comment "The occupation description included in a recommendation; may be language-tagged."@en .
+
+# =============================================================================
+# Property chains (RBox)
+# =============================================================================
+
+:hasRatedTask a owl:ObjectProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range :Task ;
+    owl:propertyChainAxiom ( :hasRating :ratedTask ) ;
+    rdfs:label "has rated task"@en .
+
+:hasRatedElement a owl:ObjectProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range :Element ;
+    owl:propertyChainAxiom ( :hasRating :ratedElement ) ;
+    rdfs:label "has rated element"@en .
+
+:hasRatedScale a owl:ObjectProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range :Scale ;
+    owl:propertyChainAxiom ( :hasRating :ratingScale ) ;
+    rdfs:label "has rated scale"@en .
+
+:hasRatedCategory a owl:ObjectProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range :Category ;
+    owl:propertyChainAxiom ( :hasRating :ratingCategory ) ;
+    rdfs:label "has rated category"@en .
+
+:requiresDWAElement a owl:ObjectProperty ;
+    rdfs:domain :Task ;
+    rdfs:range :Element ;
+    owl:propertyChainAxiom ( :hasDWA :dwaElement ) ;
+    rdfs:label "requires DWA element"@en .
+
+:relatedOccupationDirect a owl:ObjectProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range :Occupation ;
+    owl:propertyChainAxiom ( :hasRelatedOccupation :relatedOccupation ) ;
+    rdfs:label "related occupation direct"@en .
+
+:hasReferent a owl:ObjectProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range :OnetEntity ;
+    owl:propertyChainAxiom ( :hasRating :refersTo ) ;
+    rdfs:label "has referent"@en ;
+    rdfs:comment "Generic fallback chain that works even when the ABox has not been normalised."@en .
+
+# =============================================================================
+# Qualified cardinality restrictions (SHOIQ layer)
+# =============================================================================
+
+:TaskRating rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Task ] ,
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Scale ] ,
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:maxQualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :TaskCategory ] .
+
+:AbilitiesRating rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Element ] ,
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Scale ] .
+
+:WorkActivitiesRating rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Element ] ,
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Scale ] .
+
+:SpecificInterestAreasRating rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Element ] ,
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Scale ] .
+
+:KnowledgeRating rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Element ] ,
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Scale ] .
+
+:TransferableSkillsRating rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Element ] ,
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Scale ] .
+
+:TrainingAndExperienceRating rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Element ] ,
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Scale ] ,
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:maxQualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :TrainingAndExperienceCategory ] .
+
+:EssentialSkillsRating rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Element ] ,
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Scale ] .
+
+:EducationRating rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Element ] ,
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Scale ] ,
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:maxQualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :EducationCategory ] .
+
+:CareerInterestTypesRating rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Element ] ,
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Scale ] .
+
+:JobZoneRating rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :JobZone ] .
+
+:LevelScaleAnchor rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Element ] ,
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Scale ] .
+
+:TaskDWALinkage rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Element ] .
+
+:RelatedOccupationLinkage rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Occupation ] .
+
+:EducationCategory rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Element ] ,
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Scale ] .
+
+:TrainingAndExperienceCategory rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Element ] ,
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Scale ] .
+
+:TaskCategory rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty :refersTo ;
+      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Scale ] .
+
+:Element rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty :memberOf ;
+      owl:maxQualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+      owl:onClass :Element ] .
+
+# =============================================================================
+# Datatype properties
+# =============================================================================
+
+:onetSOCCode a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range xsd:string ;
+    rdfs:label "O*NET-SOC code"@en .
+
+:title a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range xsd:string ;
+    rdfs:label "title"@en .
+
+:description a owl:DatatypeProperty ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :Occupation :Element ) ] ;
+    rdfs:range xsd:string ;
+    rdfs:label "description"@en .
+
+:taskID a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain :Task ;
+    rdfs:range xsd:integer ;
+    rdfs:label "task ID"@en ;
+    rdfs:comment "O*NET task IDs are integer identifiers in the source data."@en .
+
+:task a owl:DatatypeProperty ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :Task :EmergingTask ) ] ;
+    rdfs:range xsd:string ;
+    rdfs:label "task statement"@en .
+
+:taskType a owl:DatatypeProperty ;
+    rdfs:domain :Task ;
+    rdfs:range xsd:string ;
+    rdfs:label "task type"@en .
+
+:elementID a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain :Element ;
+    rdfs:range xsd:string ;
+    rdfs:label "element ID"@en .
+
+:elementName a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain :Element ;
+    rdfs:range xsd:string ;
+    rdfs:label "element name"@en .
+
+:shortTitle a owl:DatatypeProperty ;
+    rdfs:domain :JobTitle ;
+    rdfs:range xsd:string ;
+    rdfs:label "short title"@en .
+
+:scaleID a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain :Scale ;
+    rdfs:range xsd:string ;
+    rdfs:label "scale ID"@en .
+
+:scaleName a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain :Scale ;
+    rdfs:range xsd:string ;
+    rdfs:label "scale name"@en .
+
+:jobZone a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain :JobZone ;
+    rdfs:range xsd:integer ;
+    rdfs:label "job zone number"@en .
+
+:name a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain :JobZone ;
+    rdfs:range xsd:string ;
+    rdfs:label "name"@en .
+
+:svpRange a owl:DatatypeProperty ;
+    rdfs:domain :JobZone ;
+    rdfs:range xsd:string ;
+    rdfs:label "SVP range"@en .
+
+:jobTraining a owl:DatatypeProperty ;
+    rdfs:domain :JobZone ;
+    rdfs:range xsd:string ;
+    rdfs:label "job training"@en .
+
+:experience a owl:DatatypeProperty ;
+    rdfs:domain :JobZone ;
+    rdfs:range xsd:string ;
+    rdfs:label "experience"@en .
+
+:education a owl:DatatypeProperty ;
+    rdfs:domain :JobZone ;
+    rdfs:range xsd:string ;
+    rdfs:label "education"@en .
+
+:examples a owl:DatatypeProperty ;
+    rdfs:domain :JobZone ;
+    rdfs:range xsd:string ;
+    rdfs:label "examples"@en .
+
+:jobTitle a owl:DatatypeProperty ;
+    rdfs:domain :JobTitle ;
+    rdfs:range xsd:string ;
+    rdfs:label "job title"@en .
+
+:sources a owl:DatatypeProperty ;
+    rdfs:domain :JobTitle ;
+    rdfs:range xsd:string ;
+    rdfs:label "sources"@en .
+
+:reportedJobTitle a owl:DatatypeProperty ;
+    rdfs:domain :ReportedJobTitle ;
+    rdfs:range xsd:string ;
+    rdfs:label "reported job title"@en .
+
+:shownInMyNextMove a owl:DatatypeProperty ;
+    rdfs:domain :ReportedJobTitle ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "shown in My Next Move"@en .
+
+:activity a owl:DatatypeProperty ;
+    rdfs:domain :InterestsActivity ;
+    rdfs:range xsd:string ;
+    rdfs:label "activity"@en .
+
+:keyword a owl:DatatypeProperty ;
+    rdfs:domain :InterestsKeyword ;
+    rdfs:range xsd:string ;
+    rdfs:label "keyword"@en .
+
+:keywordType a owl:DatatypeProperty ;
+    rdfs:domain :InterestsKeyword ;
+    rdfs:range xsd:string ;
+    rdfs:label "keyword type"@en .
+
+:category a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain :Category ;
+    rdfs:range xsd:integer ;
+    rdfs:label "category number"@en .
+
+:categoryDescription a owl:DatatypeProperty ;
+    rdfs:domain :Category ;
+    rdfs:range xsd:string ;
+    rdfs:label "category description"@en .
+
+:relatednessTier a owl:DatatypeProperty ;
+    rdfs:domain :RelatedOccupationLinkage ;
+    rdfs:range xsd:string ;
+    rdfs:label "relatedness tier"@en .
+
+:relatedIndex a owl:DatatypeProperty ;
+    rdfs:domain :RelatedOccupationLinkage ;
+    rdfs:range xsd:integer ;
+    rdfs:label "related index"@en .
+
+:anchorValue a owl:DatatypeProperty ;
+    rdfs:domain :LevelScaleAnchor ;
+    rdfs:range xsd:integer ;
+    rdfs:label "anchor value"@en .
+
+:anchorDescription a owl:DatatypeProperty ;
+    rdfs:domain :LevelScaleAnchor ;
+    rdfs:range xsd:string ;
+    rdfs:label "anchor description"@en .
+
+:minimum a owl:DatatypeProperty ;
+    rdfs:domain :Scale ;
+    rdfs:range xsd:integer ;
+    rdfs:label "minimum"@en .
+
+:maximum a owl:DatatypeProperty ;
+    rdfs:domain :Scale ;
+    rdfs:range xsd:integer ;
+    rdfs:label "maximum"@en .
+
+:dataValue a owl:DatatypeProperty ;
+    rdfs:domain :ValuedRating ;
+    rdfs:range xsd:float ;
+    rdfs:label "data value"@en .
+
+:n a owl:DatatypeProperty ;
+    rdfs:domain :ValuedRating ;
+    rdfs:range xsd:integer ;
+    rdfs:label "sample size n"@en .
+
+:standardError a owl:DatatypeProperty ;
+    rdfs:domain :ValuedRating ;
+    rdfs:range xsd:float ;
+    rdfs:label "standard error"@en .
+
+:upperCIBound a owl:DatatypeProperty ;
+    rdfs:domain :ValuedRating ;
+    rdfs:range xsd:float ;
+    rdfs:label "upper confidence interval bound"@en .
+
+:lowerCIBound a owl:DatatypeProperty ;
+    rdfs:domain :ValuedRating ;
+    rdfs:range xsd:float ;
+    rdfs:label "lower confidence interval bound"@en .
+
+:recommendSuppress a owl:DatatypeProperty ;
+    rdfs:domain :Rating ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "recommend suppress"@en .
+
+:notRelevant a owl:DatatypeProperty ;
+    rdfs:domain :Rating ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "not relevant"@en .
+
+:incumbentsResponding a owl:DatatypeProperty ;
+    rdfs:domain :Task ;
+    rdfs:range xsd:integer ;
+    rdfs:label "incumbents responding"@en .
+
+:domainSource a owl:DatatypeProperty ;
+    rdfs:domain :OnetEntity ;
+    rdfs:range xsd:string ;
+    rdfs:label "domain source"@en .
+
+:dateUpdated a owl:DatatypeProperty ;
+    rdfs:domain :OnetEntity ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "date updated"@en .
+
+career:levelOrder a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:EducationLevel ;
+    rdfs:range xsd:integer ;
+    rdfs:label "level order"@en .
+
+career:hollandLetter a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:HollandCode ;
+    rdfs:range xsd:string ;
+    rdfs:label "Holland letter"@en .
+
+# =============================================================================
+# Datatype layer
+# =============================================================================
+# The ontology uses the standard OWL 2 datatypes xsd:string, xsd:integer,
+# xsd:float, xsd:boolean and xsd:dateTime.  Custom datatypes were deliberately
+# avoided because HermiT does not support user-defined datatypes; the ABox
+# validator checks the intended numeric ranges (0-100 for EducationRating
+# percentages and 0-7 for LevelScaleAnchor values) separately.
+
+# =============================================================================
+# Keys
+# =============================================================================
+
+:Occupation owl:hasKey ( :onetSOCCode ) .
+:Task owl:hasKey ( :taskID ) .
+:Element owl:hasKey ( :elementID ) .
+:Scale owl:hasKey ( :scaleID ) .
+:JobZone owl:hasKey ( :jobZone ) .
+
+# =============================================================================
+# Education levels: 12 canonical levels
+# =============================================================================
+
+career:Level1_BelowHighSchool a owl:NamedIndividual, career:EducationLevel ;
+    rdfs:label "Less than a High School Diploma"@en ;
+    career:levelOrder 1 .
+
+career:Level2_HighSchool a owl:NamedIndividual, career:EducationLevel ;
+    rdfs:label "High School Diploma or equivalent"@en ;
+    career:levelOrder 2 .
+
+career:Level3_PostSecondaryCertificate a owl:NamedIndividual, career:EducationLevel ;
+    rdfs:label "Post-Secondary Certificate"@en ;
+    career:levelOrder 3 .
+
+career:Level4_SomeCollege a owl:NamedIndividual, career:EducationLevel ;
+    rdfs:label "Some College Courses"@en ;
+    career:levelOrder 4 .
+
+career:D3 a owl:NamedIndividual, career:EducationLevel ;
+    rdfs:label "Associate's Degree or other 2-year degree"@en ;
+    rdfs:comment "Associate's degree or other two-year degree, mapped to Indonesian D3."@en ;
+    career:levelOrder 5 .
+
+career:S1 a owl:NamedIndividual, career:EducationLevel ;
+    rdfs:label "Bachelor's Degree"@en ;
+    rdfs:comment "Bachelor's degree, mapped to Indonesian S1."@en ;
+    career:levelOrder 6 .
+
+career:Level7_PostBaccalaureateCertificate a owl:NamedIndividual, career:EducationLevel ;
+    rdfs:label "Post-Baccalaureate Certificate"@en ;
+    career:levelOrder 7 .
+
+career:S2 a owl:NamedIndividual, career:EducationLevel ;
+    rdfs:label "Master's Degree"@en ;
+    career:levelOrder 8 .
+
+career:Level9_PostMasterCertificate a owl:NamedIndividual, career:EducationLevel ;
+    rdfs:label "Post-Master's Certificate"@en ;
+    career:levelOrder 9 .
+
+career:Level10_ProfessionalDoctorate a owl:NamedIndividual, career:EducationLevel ;
+    rdfs:label "Professional Doctorate"@en ;
+    career:levelOrder 10 .
+
+career:S3 a owl:NamedIndividual, career:EducationLevel ;
+    rdfs:label "Doctoral Degree"@en ;
+    career:levelOrder 11 .
+
+career:Level12_PostDoctoral a owl:NamedIndividual, career:EducationLevel ;
+    rdfs:label "Post-Doctoral Training"@en ;
+    career:levelOrder 12 .
+
+[] a owl:AllDifferent ;
+    owl:members (
+        career:Level1_BelowHighSchool
+        career:Level2_HighSchool
+        career:Level3_PostSecondaryCertificate
+        career:Level4_SomeCollege
+        career:D3
+        career:S1
+        career:Level7_PostBaccalaureateCertificate
+        career:S2
+        career:Level9_PostMasterCertificate
+        career:Level10_ProfessionalDoctorate
+        career:S3
+        career:Level12_PostDoctoral
+    ) .
+
+# Threshold classes are nominal classes over education-level individuals.
+career:AtLeastD3 a owl:Class ;
+    owl:equivalentClass [
+        a owl:Class ;
+        owl:oneOf (
+            career:D3
+            career:S1
+            career:Level7_PostBaccalaureateCertificate
+            career:S2
+            career:Level9_PostMasterCertificate
+            career:Level10_ProfessionalDoctorate
+            career:S3
+            career:Level12_PostDoctoral
+        )
+    ] ;
+    rdfs:label "Associate's Degree or Higher"@en .
+
+career:AtLeastS1 a owl:Class ;
+    owl:equivalentClass [
+        a owl:Class ;
+        owl:oneOf (
+            career:S1
+            career:Level7_PostBaccalaureateCertificate
+            career:S2
+            career:Level9_PostMasterCertificate
+            career:Level10_ProfessionalDoctorate
+            career:S3
+            career:Level12_PostDoctoral
+        )
+    ] ;
+    rdfs:label "Bachelor's Degree or Higher"@en .
+
+career:AtLeastS2 a owl:Class ;
+    owl:equivalentClass [
+        a owl:Class ;
+        owl:oneOf (
+            career:S2
+            career:Level9_PostMasterCertificate
+            career:Level10_ProfessionalDoctorate
+            career:S3
+            career:Level12_PostDoctoral
+        )
+    ] ;
+    rdfs:label "Master's Degree or Higher"@en .
+
+career:AtLeastS3 a owl:Class ;
+    owl:equivalentClass [
+        a owl:Class ;
+        owl:oneOf (
+            career:S3
+            career:Level12_PostDoctoral
+        )
+    ] ;
+    rdfs:label "Doctoral Degree or Higher"@en .
+
+career:ExactlyD3 a owl:Class ;
+    owl:equivalentClass [
+        a owl:Class ;
+        owl:oneOf ( career:D3 )
+    ] ;
+    rdfs:label "Associate's Degree"@en .
+
+career:ExactlyS1 a owl:Class ;
+    owl:equivalentClass [
+        a owl:Class ;
+        owl:oneOf ( career:S1 )
+    ] ;
+    rdfs:label "Bachelor's Degree"@en .
+
+career:ExactlyS2 a owl:Class ;
+    owl:equivalentClass [
+        a owl:Class ;
+        owl:oneOf ( career:S2 )
+    ] ;
+    rdfs:label "Master's Degree"@en .
+
+career:ExactlyS3 a owl:Class ;
+    owl:equivalentClass [
+        a owl:Class ;
+        owl:oneOf ( career:S3 )
+    ] ;
+    rdfs:label "Doctoral Degree"@en .
+
+career:AtLeastS1 rdfs:subClassOf career:AtLeastD3 .
+career:AtLeastS2 rdfs:subClassOf career:AtLeastS1 .
+career:AtLeastS3 rdfs:subClassOf career:AtLeastS2 .
+
+career:ExactlyD3 owl:disjointWith career:AtLeastS1 .
+career:ExactlyS1 owl:disjointWith career:AtLeastS2 .
+career:ExactlyS2 owl:disjointWith career:AtLeastS3 .
+
+# =============================================================================
+# Holland codes (RIASEC) and application-defined classes
+# =============================================================================
+
+career:Realistic a owl:NamedIndividual, career:HollandCode ;
+    rdfs:label "Realistic"@en ;
+    career:hollandLetter "R" .
+
+career:Investigative a owl:NamedIndividual, career:HollandCode ;
+    rdfs:label "Investigative"@en ;
+    career:hollandLetter "I" .
+
+career:Artistic a owl:NamedIndividual, career:HollandCode ;
+    rdfs:label "Artistic"@en ;
+    career:hollandLetter "A" .
+
+career:Social a owl:NamedIndividual, career:HollandCode ;
+    rdfs:label "Social"@en ;
+    career:hollandLetter "S" .
+
+career:Enterprising a owl:NamedIndividual, career:HollandCode ;
+    rdfs:label "Enterprising"@en ;
+    career:hollandLetter "E" .
+
+career:Conventional a owl:NamedIndividual, career:HollandCode ;
+    rdfs:label "Conventional"@en ;
+    career:hollandLetter "C" .
+
+[] a owl:AllDifferent ;
+    owl:members (
+        career:Realistic
+        career:Investigative
+        career:Artistic
+        career:Social
+        career:Enterprising
+        career:Conventional
+    ) .
+
+career:CompleteData a owl:NamedIndividual, career:DataStatus ;
+    rdfs:label "Complete rating data"@en .
+
+career:NoRatingData a owl:NamedIndividual, career:DataStatus ;
+    rdfs:label "No rating data"@en .
+
+[] a owl:AllDifferent ;
+    owl:members ( career:CompleteData career:NoRatingData ) .
+
+career:RealisticUser a owl:Class .
+career:InvestigativeUser a owl:Class .
+career:ArtisticUser a owl:Class .
+career:SocialUser a owl:Class .
+career:EnterprisingUser a owl:Class .
+career:ConventionalUser a owl:Class .
+career:RealisticOccupation a owl:Class .
+career:InvestigativeOccupation a owl:Class .
+career:ArtisticOccupation a owl:Class .
+career:SocialOccupation a owl:Class .
+career:EnterprisingOccupation a owl:Class .
+career:ConventionalOccupation a owl:Class .
+career:AssessedOccupation a owl:Class .
+career:UnassessedOccupation a owl:Class .
+
+career:RealisticUser owl:equivalentClass [
+    a owl:Class ;
+    owl:intersectionOf (
+        career:User
+        [ a owl:Restriction ;
+          owl:onProperty career:hasHollandCode ;
+          owl:hasValue career:Realistic ]
+    )
+] .
+
+career:InvestigativeUser owl:equivalentClass [
+    a owl:Class ;
+    owl:intersectionOf (
+        career:User
+        [ a owl:Restriction ;
+          owl:onProperty career:hasHollandCode ;
+          owl:hasValue career:Investigative ]
+    )
+] .
+
+career:ArtisticUser owl:equivalentClass [
+    a owl:Class ;
+    owl:intersectionOf (
+        career:User
+        [ a owl:Restriction ;
+          owl:onProperty career:hasHollandCode ;
+          owl:hasValue career:Artistic ]
+    )
+] .
+
+career:SocialUser owl:equivalentClass [
+    a owl:Class ;
+    owl:intersectionOf (
+        career:User
+        [ a owl:Restriction ;
+          owl:onProperty career:hasHollandCode ;
+          owl:hasValue career:Social ]
+    )
+] .
+
+career:EnterprisingUser owl:equivalentClass [
+    a owl:Class ;
+    owl:intersectionOf (
+        career:User
+        [ a owl:Restriction ;
+          owl:onProperty career:hasHollandCode ;
+          owl:hasValue career:Enterprising ]
+    )
+] .
+
+career:ConventionalUser owl:equivalentClass [
+    a owl:Class ;
+    owl:intersectionOf (
+        career:User
+        [ a owl:Restriction ;
+          owl:onProperty career:hasHollandCode ;
+          owl:hasValue career:Conventional ]
+    )
+] .
+
+career:RealisticOccupation owl:equivalentClass [
+    a owl:Class ;
+    owl:intersectionOf (
+        :Occupation
+        [ a owl:Restriction ;
+          owl:onProperty career:hasPrimaryHollandCode ;
+          owl:hasValue career:Realistic ]
+    )
+] .
+
+career:InvestigativeOccupation owl:equivalentClass [
+    a owl:Class ;
+    owl:intersectionOf (
+        :Occupation
+        [ a owl:Restriction ;
+          owl:onProperty career:hasPrimaryHollandCode ;
+          owl:hasValue career:Investigative ]
+    )
+] .
+
+career:ArtisticOccupation owl:equivalentClass [
+    a owl:Class ;
+    owl:intersectionOf (
+        :Occupation
+        [ a owl:Restriction ;
+          owl:onProperty career:hasPrimaryHollandCode ;
+          owl:hasValue career:Artistic ]
+    )
+] .
+
+career:SocialOccupation owl:equivalentClass [
+    a owl:Class ;
+    owl:intersectionOf (
+        :Occupation
+        [ a owl:Restriction ;
+          owl:onProperty career:hasPrimaryHollandCode ;
+          owl:hasValue career:Social ]
+    )
+] .
+
+career:EnterprisingOccupation owl:equivalentClass [
+    a owl:Class ;
+    owl:intersectionOf (
+        :Occupation
+        [ a owl:Restriction ;
+          owl:onProperty career:hasPrimaryHollandCode ;
+          owl:hasValue career:Enterprising ]
+    )
+] .
+
+career:ConventionalOccupation owl:equivalentClass [
+    a owl:Class ;
+    owl:intersectionOf (
+        :Occupation
+        [ a owl:Restriction ;
+          owl:onProperty career:hasPrimaryHollandCode ;
+          owl:hasValue career:Conventional ]
+    )
+] .
+
+career:AssessedOccupation owl:equivalentClass [
+    a owl:Class ;
+    owl:intersectionOf (
+        :Occupation
+        [ a owl:Restriction ;
+          owl:onProperty career:hasDataStatus ;
+          owl:hasValue career:CompleteData ]
+    )
+] .
+
+career:UnassessedOccupation owl:equivalentClass [
+    a owl:Class ;
+    owl:intersectionOf (
+        :Occupation
+        [ a owl:Restriction ;
+          owl:onProperty career:hasDataStatus ;
+          owl:hasValue career:NoRatingData ]
+    )
+] .
+
+# =============================================================================
+# End of schema
+# =============================================================================

@@ -15,6 +15,7 @@ career:DefaultRankingPolicy a career:RankingPolicy ;
     # the whole pool so retrieval never silently drops a relevant occupation.
     career:lexicalCandidateLimit 2000 ;
     career:requireEligible true ;
+    career:fallbackTier "Eligible" ;
     career:strongHollandThreshold "0.70"^^xsd:decimal ;
     career:strongElementThreshold "0.65"^^xsd:decimal ;
     career:hollandPrimaryWeight "1.0"^^xsd:decimal ;
@@ -33,6 +34,9 @@ career:DefaultRankingPolicy a career:RankingPolicy ;
     career:defaultMaxJobZone 5 ;
     career:scorePrecision 4 ;
     career:explanationLimit 5 ;
+    career:taskEvidenceLimit 3 ;
+    career:jobTitleEvidenceLimit 3 ;
+    career:descriptionPreviewChars 400 ;
     career:directElementWeight "0.35"^^xsd:decimal ;
     career:directElementMinLength 4 ;
     career:reasonerDefault "auto" ;

@@ -75,14 +75,18 @@ class Lexicon:
             if entry_type not in subject_types and not predicates.get(config.LEX + "targetKind"):
                 continue
             keywords = tuple(
-                t.value
-                for t in predicates.get(config.LEX + "keyword", [])
-                if t.kind == "literal" and t.value.strip()
+                dict.fromkeys(
+                    t.value
+                    for t in predicates.get(config.LEX + "keyword", [])
+                    if t.kind == "literal" and t.value.strip()
+                )
             )
             patterns = tuple(
-                t.value
-                for t in predicates.get(config.LEX + "pattern", [])
-                if t.kind == "literal" and t.value.strip()
+                dict.fromkeys(
+                    t.value
+                    for t in predicates.get(config.LEX + "pattern", [])
+                    if t.kind == "literal" and t.value.strip()
+                )
             )
             target_kind = ttl_stream.literal_value(
                 predicates, config.LEX + "targetKind", ""
@@ -147,6 +151,36 @@ class Lexicon:
                             capture=capture,
                         )
                     )
+
+        # A keyword and a pattern can describe the same span (for example a
+        # spelling variant plus its normalized form).  Keep one match per
+        # target/span, preferring the stronger weight.
+        deduped: Dict[tuple, LexicalMatch] = {}
+        for match in raw:
+            key = (match.kind, match.target, match.start, match.end, match.capture)
+            previous = deduped.get(key)
+            if previous is None or match.weight > previous.weight:
+                deduped[key] = match
+        raw = list(deduped.values())
+
+        # Prefer the longest phrase for the same target.  Without this,
+        # "ekplorasi data" would also fire inside the longer match
+        # "menganalisis dan ekplorasi data" and inflate the evidence weight.
+        ordered = sorted(
+            raw,
+            key=lambda item: (item.start, -(item.end - item.start), item.end),
+        )
+        kept: List[LexicalMatch] = []
+        for match in ordered:
+            overlaps = any(
+                previous.kind == match.kind
+                and previous.target == match.target
+                and not (match.end <= previous.start or match.start >= previous.end)
+                for previous in kept
+            )
+            if not overlaps:
+                kept.append(match)
+        raw = kept
 
         negations = [match for match in raw if match.kind == "negation"]
         result: List[LexicalMatch] = []

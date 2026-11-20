@@ -177,6 +177,7 @@ def cmd_recommend(args: argparse.Namespace) -> int:
                 recommendations,
                 pipeline.ontology,
                 language=output_language,
+                description_limit=pipeline.policy.description_preview_chars,
             )
         else:
             text = recommendations_table(
@@ -194,6 +195,12 @@ def cmd_recommend(args: argparse.Namespace) -> int:
                     )
                     if item.explanation:
                         details.append(f"   {item.explanation}")
+                    description = item.display_description(
+                        output_language,
+                        limit=pipeline.policy.description_preview_chars,
+                    )
+                    if description:
+                        details.append(f"   Deskripsi: {description}")
                     for evidence in item.evidence[: pipeline.policy.explanation_limit]:
                         detail = evidence.get("detail")
                         label = evidence.get("label")

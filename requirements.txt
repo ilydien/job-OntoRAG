@@ -1,6 +1,6 @@
 # OntoRAG terminal prototype
 #
-# Python 3.11+ is recommended.  SQLite must be built with FTS5 support
+# Python 3.12+ is recommended.  SQLite must be built with FTS5 support
 # (the CPython binaries normally are).
 #
 # rdflib is used only to assemble the small RDF/XML reasoning bundle that is

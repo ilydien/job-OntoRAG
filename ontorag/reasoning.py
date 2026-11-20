@@ -124,6 +124,7 @@ class SqlReasoner:
     fallback therefore marks them eligible but cannot infer ``EligibleStrong``.
     """
 
+    fallback_tier: str
     name: str = "sql"
 
     def infer(
@@ -139,7 +140,7 @@ class SqlReasoner:
                 "strong_holland": False,
                 "missing_education": False,
                 "missing_job_zone": False,
-                "tier": "Eligible",
+                "tier": self.fallback_tier,
                 "source": "sql",
             }
             for row in candidates
@@ -167,6 +168,7 @@ class PelletReasoner:
         self.reasoning_map = Path(reasoning_map) if reasoning_map else None
         self.temp_dir = Path(temp_dir)
         self._slice_map_cache: Optional[Dict[str, str]] = None
+        self._output_map_cache: Optional[Dict[str, str]] = None
 
     def _slice_map(self) -> Dict[str, str]:
         if self._slice_map_cache is not None:
@@ -203,6 +205,42 @@ class PelletReasoner:
                 raise ReasoningError(f"missing {predicate} in {path}")
             values[key] = value
         self._slice_map_cache = values
+        return values
+
+    def _output_map(self) -> Dict[str, str]:
+        if self._output_map_cache is not None:
+            return self._output_map_cache
+        from .rdf_loader import load_block_map
+
+        path = self.reasoning_map or (config.CONFIG_DIR / "reasoning_map.ttl")
+        if not path.exists():
+            raise ReasoningError(f"reasoning output map not found: {path}")
+        blocks = load_block_map(path)
+        subject = config.CAREER + "DefaultReasoningOutputMap"
+        predicates = blocks.get(subject)
+        if not predicates:
+            raise ReasoningError(f"no career:DefaultReasoningOutputMap in {path}")
+        fields = {
+            "eligible_class": ("outputEligibleClass", "iri"),
+            "strong_class": ("outputStrongClass", "iri"),
+            "strong_holland_class": ("outputStrongHollandClass", "iri"),
+            "missing_education_class": ("outputMissingEducationClass", "iri"),
+            "missing_job_zone_class": ("outputMissingJobZoneClass", "iri"),
+            "strong_tier": ("outputStrongTier", "literal"),
+            "eligible_tier": ("outputEligibleTier", "literal"),
+            "not_eligible_tier": ("outputNotEligibleTier", "literal"),
+        }
+        values: Dict[str, str] = {}
+        for key, (local, kind) in fields.items():
+            predicate = config.CAREER + local
+            if kind == "iri":
+                value = ttl_stream.iri_value(predicates, predicate, None)
+            else:
+                value = ttl_stream.literal_value(predicates, predicate, None)
+            if not value:
+                raise ReasoningError(f"missing {predicate} in {path}")
+            values[key] = value
+        self._output_map_cache = values
         return values
 
     def _candidate_slice(self, candidates: Sequence[dict]) -> str:
@@ -333,23 +371,29 @@ class PelletReasoner:
         world,
         candidates: Sequence[dict],
     ) -> Dict[str, dict]:
-        eligible = self._class_instances(world, config.CAREER + "EligibleOccupation")
-        strong = self._class_instances(world, config.CAREER + "EligibleStrong")
-        strong_holland = self._class_instances(world, config.CAREER + "StrongHollandMatch")
-        missing_education = self._class_instances(world, config.CAREER + "MissingEducation")
-        missing_job_zone = self._class_instances(world, config.CAREER + "MissingJobZone")
+        output = self._output_map()
+        eligible = self._class_instances(world, output["eligible_class"])
+        strong = self._class_instances(world, output["strong_class"])
+        strong_holland = self._class_instances(world, output["strong_holland_class"])
+        missing_education = self._class_instances(world, output["missing_education_class"])
+        missing_job_zone = self._class_instances(world, output["missing_job_zone_class"])
         result: Dict[str, dict] = {}
         for row in candidates:
             iri = str(row["iri"])
             is_strong = iri in strong
             is_eligible = iri in eligible or is_strong
+            tier = (
+                output["strong_tier"]
+                if is_strong
+                else (output["eligible_tier"] if is_eligible else output["not_eligible_tier"])
+            )
             result[iri] = {
                 "eligible": is_eligible,
                 "eligible_strong": is_strong,
                 "strong_holland": iri in strong_holland,
                 "missing_education": iri in missing_education,
                 "missing_job_zone": iri in missing_job_zone,
-                "tier": "EligibleStrong" if is_strong else ("Eligible" if is_eligible else "NotEligible"),
+                "tier": tier,
                 "source": "pellet",
             }
         return result
@@ -358,9 +402,9 @@ class PelletReasoner:
 class AutoReasoner:
     name = "auto"
 
-    def __init__(self, pellet: PelletReasoner, fallback: Optional[ReasoningService] = None) -> None:
+    def __init__(self, pellet: PelletReasoner, fallback: ReasoningService) -> None:
         self.pellet = pellet
-        self.fallback = fallback or SqlReasoner()
+        self.fallback = fallback
 
     def infer(
         self,
@@ -395,5 +439,5 @@ def make_reasoner(
     if mode == "pellet":
         return pellet
     if mode == "sql":
-        return SqlReasoner()
-    return AutoReasoner(pellet, SqlReasoner())
+        return SqlReasoner(policy.fallback_tier)
+    return AutoReasoner(pellet, SqlReasoner(policy.fallback_tier))
