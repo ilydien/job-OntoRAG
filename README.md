@@ -209,6 +209,24 @@ python -m ontorag.cli recommend --text "..." --reasoner sql
 The SQL fallback is conservative: it can produce `Eligible`, but it cannot infer
 `EligibleStrong` because that tier requires the SWRL strong-Holland-match rule.
 
+## Web UI (Lite)
+
+A small React (Vite) + FastAPI front end wraps the same pipeline.
+
+```bash
+pip install -r web/requirements.txt
+cd web/frontend && npm install && npm run build && cd ../..
+uvicorn web.server:app --port 8000   # http://localhost:8000
+```
+
+The server builds one pipeline at startup (`retrieval=ontology`,
+`reasoner=auto`). Override with `ONTORAG_RETRIEVAL`, `ONTORAG_REASONER`,
+`ONTORAG_SPARQL_ENDPOINT`, or `ONTORAG_INDEX`; changing the retrieval mode
+requires a restart. For development, run `uvicorn web.server:app --reload`
+and `npm run dev` in `web/frontend` (Vite proxies `/api` to port 8000).
+Requests are serialised on the event loop, which is fine for a single-user
+demo.
+
 ## Profile JSON
 
 A JSON profile can be mixed with free text. `--text` is still used for lexical
@@ -302,7 +320,7 @@ The index test builds a small SQLite index from a local fixture; the full
   `build-embeddings`; without them, the system uses lexical FTS5/BM25.
 - Only a shortlist is reasoned over. Candidates outside the shortlist keep the
   SQL eligibility default and therefore do not receive `EligibleStrong`.
-- The prototype has no web UI. All output is terminal/file based.
+- The web UI is a single-page demo: no authentication, history, or persistence.
 - The current index is rating-centric, so `NoRatingData` occupations are not
   ranked by default.
 - If Pellet is unavailable (no Java, incompatible Java, or missing
@@ -321,6 +339,7 @@ data/               generated SQLite index and scratch files (ignored)
 samples/            small ABox fixtures
 benchmark/          gold queries for Recall@k/MRR
 tests/              stdlib unittest suite
+web/                FastAPI backend + React (Vite) front end
 reports/            validation notes and benchmark output
 requirements-embed.txt  optional semantic-retrieval dependencies
 ```
