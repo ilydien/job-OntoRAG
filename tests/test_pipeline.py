@@ -35,6 +35,7 @@ class PipelineSqlTests(unittest.TestCase):
             index_path=self.index_path,
             overlay_path=self.overlay,
             reasoner_mode="sql",
+            retrieval="lexical",
             temp_dir=self.tmp.name,
         ) as pipeline:
             profile = pipeline.profile_from_text(
@@ -91,6 +92,7 @@ class PipelinePelletTests(unittest.TestCase):
             index_path=self.index_path,
             overlay_path=self.overlay,
             reasoner_mode="pellet",
+            retrieval="lexical",
             temp_dir=self.tmp.name,
         ) as pipeline:
             profile = pipeline.profile_from_text(

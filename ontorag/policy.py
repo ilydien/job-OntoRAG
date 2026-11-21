@@ -60,6 +60,8 @@ class RankingPolicy:
     ontology_normalization: str = "minmax"
     ontology_candidate_limit: int = 2000
     embedding_model: Optional[str] = None
+    sparql_endpoint: Optional[str] = None
+    sparql_timeout: int = 30
     metadata: Dict[str, object] = field(default_factory=dict)
 
     @property
@@ -234,6 +236,8 @@ def load_ranking_policy(path: str | Path = config.DEFAULT_POLICY) -> RankingPoli
         ontology_normalization=optional_string(config.CAREER + "ontologyNormalization", "minmax") or "minmax",
         ontology_candidate_limit=optional_int(config.CAREER + "ontologyCandidateLimit", 2000),
         embedding_model=optional_string(config.CAREER + "embeddingModel"),
+        sparql_endpoint=optional_string(config.CAREER + "sparqlEndpoint"),
+        sparql_timeout=optional_int(config.CAREER + "sparqlTimeout", 30),
     )
 
 

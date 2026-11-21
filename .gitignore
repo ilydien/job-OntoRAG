@@ -2,5 +2,6 @@
 environment/jre/
 OpenJDK*.tar.gz
 data/
+run/
 __pycache__/
 *.pyc

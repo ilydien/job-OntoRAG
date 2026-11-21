@@ -75,6 +75,14 @@ class OntologyPipelineTests(unittest.TestCase):
     def tearDownClass(cls) -> None:
         cls.tmp.cleanup()
 
+    def test_default_retrieval_mode_is_ontology(self) -> None:
+        with Pipeline.from_paths(
+            index_path=self.index_path,
+            overlay_path=self.overlay,
+            reasoner_mode="sql",
+        ) as pipeline:
+            self.assertEqual(pipeline.retrieval_mode, "ontology")
+
     def test_ontology_mode_adds_sparql_component(self) -> None:
         with Pipeline.from_paths(
             index_path=self.index_path,

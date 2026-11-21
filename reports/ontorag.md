@@ -1,6 +1,6 @@
 # OntoRAG implementation validation
 
-Date: 2026-11-19
+Date: 2026-11-21
 
 ## Inputs kept unchanged
 
@@ -95,17 +95,17 @@ ABox slices as consistent, while the deliberate D3/S1 disjointness probe is
 inconsistent as expected. If Pellet is unavailable, `--reasoner auto` falls
 back to SQL and warns on stderr.
 
-## Example top-5 output (auto retrieval + Pellet)
+## Example top-5 output (default ontology retrieval + Pellet)
 
-For the sample profile above, with embeddings built:
+For the sample profile above:
 
 | Rank | Tier | Score | Occupation |
 | ---: | --- | ---: | --- |
-| 1 | EligibleStrong | 0.9391 | Data Scientists |
-| 2 | EligibleStrong | 0.9023 | Software Developers |
-| 3 | EligibleStrong | 0.8804 | Social Science Research Assistants |
-| 4 | EligibleStrong | 0.8656 | Remote Sensing Scientists and Technologists |
-| 5 | EligibleStrong | 0.8523 | Geographers |
+| 1 | EligibleStrong | 0.9079 | Software Developers |
+| 2 | EligibleStrong | 0.8954 | Data Scientists |
+| 3 | EligibleStrong | 0.8797 | Computer Systems Analysts |
+| 4 | EligibleStrong | 0.8265 | Software Quality Assurance Analysts and Testers |
+| 5 | EligibleStrong | 0.8145 | Computer Network Architects |
 
 Each result includes:
 
@@ -139,9 +139,10 @@ The SQL path is the low-latency mode. Pellet is the tier-aware mode.
 python3 -m unittest discover -s tests -v
 ```
 
-- System Python (no owlready2): 83 pass, 1 skipped (Pellet).
-- `.venv` with `owlready2==0.48` and Java 21: adds the end-to-end Pellet/SWRL
-  tier test; the bundled-JRE test still skips.
+- System Python (no owlready2/rdflib): 77 pass, 11 skipped (optional
+  Jena/rdflib, Pellet, and bundled-JRE tests).
+- `.venv` with `owlready2==0.48`, `rdflib`, and Java 21: 87 pass, 1 skipped
+  (bundled-JRE test), including the end-to-end Pellet/SWRL tier test.
 
 The suite covers the streaming parser, policy loading, lexicon and negation,
 profile extraction, SQLite/FTS5 schema and candidate filters, batched element
@@ -307,14 +308,15 @@ Retrieval modes:
 
 | Mode | Behaviour |
 | --- | --- |
-| `auto` (default) | Semantic when the index has matching vectors and the model loads, otherwise lexical with an explicit warning. |
-| `ontology` | SPARQL alignment of the profile's element individuals against the index slice (`rdflib`); raises `GraphSearchUnavailable` when `rdflib` is absent. |
+| `ontology` (default) | SPARQL alignment of the profile's element individuals against the index slice (`rdflib`) or a Fuseki endpoint; requires one of those graph backends. |
+| `auto` | Explicit fallback mode: semantic when the index has matching vectors and the model loads, otherwise lexical with a warning. |
 | `semantic` | Cosine similarity only; missing/mismatched vectors raise `EmbeddingIndexMismatch`. |
 | `lexical` | The previous FTS5/BM25 path. |
-| `hybrid` | Semantic + lexical as before; the policy weights decide the mix. |
+| `hybrid` | Semantic + lexical; the policy weights decide the mix. |
 
-`ontology` is a separate mode: it does not fold into `hybrid`, so the verified
-semantic/hybrid benchmark numbers are unchanged.
+`ontology` is the policy default and does not fold into `hybrid`, so the
+semantic/hybrid benchmark numbers remain separate. BM25/semantic are explicit
+fallback modes, not the default retrieval path.
 
 Component weights are now `holland 0.45 + element 0.30 + ontology 0.30 +
 semantic 0.25 + lexical 0.15`; `score_candidates` renormalises over the
@@ -359,6 +361,21 @@ full pool), so the element match and the hop are issued independently and
 merged. `sparql_query` / `related_sparql_query` expose both query strings for
 audit. The scores enter ranking as the `ontology` component (policy weight
 0.30, min-max normalised) with an `ontology` evidence item on each result.
+
+The same graph can be exported to Jena/Fuseki. `build-graph` writes the derived
+N-Triples graph from SQLite:
+
+```bash
+python3 -m ontorag.cli build-graph \
+  --index data/onet_index.sqlite \
+  --out data/ontorag_derived.nt \
+  --rebuild
+```
+
+Then `--retrieval ontology --sparql-endpoint http://localhost:3030/onet/sparql`
+uses `ontorag/jena_store.py` to execute the two queries over HTTP. The endpoint
+stores the derived graph, not the raw ABox; `--retrieval ontology` falls back to
+the in-process `rdflib` path when no endpoint is supplied.
 
 ```bash
 python3 -m ontorag.cli recommend --index data/onet_index.sqlite \
@@ -411,8 +428,8 @@ it works across owlready2 versions. Override it per request with
 - Retrieval now has a semantic path. Embedding build time and vector-table size
   for the full index are recorded in the semantic section; Recall@k/MRR now has
   a gold-query harness; the e5 model is available in this workspace and
-  occupation embeddings are built. The 75-test suite covers the plumbing with a
-  deterministic test backend and the optional Pellet path.
+  occupation embeddings are built. The 88-test suite covers the plumbing with a
+  deterministic test backend and the optional Pellet and Jena/Fuseki paths.
 - Candidate recall is no longer truncated. A small gold query set with
   Recall@k/MRR measures ranking quality (`benchmark` command); the remaining
   misses are adjacent occupations (e.g. associate vs. full statisticians).

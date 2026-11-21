@@ -19,11 +19,11 @@ unchanged; they are data sources, not rewritten artifacts.
 - **No hard-coded inference.** Eligibility and tier rules are declarative SWRL
   in `rules/`. Ranking weights, thresholds, defaults, and tier order are in
   `config/ranking_policy.ttl`.
-- **Configurable retrieval.** SQLite applies hard education/job-zone
-  constraints; FTS5/BM25 computes a lexical component and optional
-  occupation-card embeddings add a semantic component. The default `auto`
-  mode uses semantic retrieval when vectors are available, otherwise lexical
-  retrieval.
+- **Ontology-first retrieval.** SQLite applies hard education/job-zone
+  constraints; the default retrieval path traverses the derived ontology
+  graph and scores ontology element alignment with SPARQL. FTS5/BM25 and
+  occupation-card embeddings remain available as explicit fallback modes
+  (`lexical`, `semantic`, `hybrid`, `auto`).
 - **Reasoning over a slice.** The full O*NET ABox is never sent to a reasoner.
   The pipeline builds a temporary bundle containing the schema, policy, rules,
   one user profile, and a small set of candidate occupations.
@@ -154,11 +154,44 @@ python -m ontorag.cli recommend --text "Saya lulusan D3 dan suka membantu orang.
 Retrieval selection:
 
 ```bash
+# Default: graph/ontology traversal
+python -m ontorag.cli recommend --text "..." --retrieval ontology
+
+# Optional Jena/Fuseki endpoint for the same graph traversal
+python -m ontorag.cli recommend --text "..." --retrieval ontology \
+  --sparql-endpoint http://localhost:3030/onet/sparql
+
+# Explicit non-primary retrieval paths
 python -m ontorag.cli recommend --text "..." --retrieval auto
 python -m ontorag.cli recommend --text "..." --retrieval semantic
 python -m ontorag.cli recommend --text "..." --retrieval lexical
 python -m ontorag.cli recommend --text "..." --retrieval hybrid
 ```
+
+### Jena/Fuseki ontology retrieval
+
+The `ontology` mode can use Apache Jena Fuseki as an HTTP SPARQL endpoint. The
+endpoint stores a derived graph exported from SQLite, not the raw 600 MB ABox:
+
+```bash
+python -m ontorag.cli build-graph \
+  --index data/onet_index.sqlite \
+  --out data/ontorag_derived.nt \
+  --rebuild
+
+# Quick local Fuseki start (in-memory dataset)
+fuseki-server --file=data/ontorag_derived.nt --port 3030 /onet
+
+python -m ontorag.cli recommend \
+  --text "Saya suka menganalisis data" \
+  --retrieval ontology \
+  --sparql-endpoint http://localhost:3030/onet/sparql \
+  --top-k 5
+```
+
+Without `--sparql-endpoint`, `ontology` uses the in-process `rdflib` slice when
+available. If neither Fuseki nor `rdflib` is available, the mode fails with a
+clear error.
 
 Reasoner selection:
 
@@ -254,9 +287,10 @@ The index test builds a small SQLite index from a local fixture; the full
 - Pellet was validated with `owlready2==0.48` and Java 21 on a small candidate
   slice. A sample profile with S1/job-zone-4 constraints produced
   `EligibleStrong` results through SWRL.
-- The test suite currently contains 77 tests. In the system interpreter it
-  reports 75 passes and 2 skips; in the prepared `.venv` with Java and
-  `owlready2==0.48` it reports 76 passes and 1 skip.
+- The test suite currently contains 88 tests. In the system interpreter it
+  reports 77 passes and 11 skips (optional rdflib/Jena and Pellet tests); in
+  the prepared `.venv` with Java and `owlready2==0.48` it reports 87 passes and
+  1 skip.
 - HermiT is intended for OWL 2 DL schema validation, not for the runtime SWRL
   built-ins used here; the bundled HermiT reports built-in atoms as unsupported.
   Runtime rule execution therefore uses Pellet, with SQL as the explicit

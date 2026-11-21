@@ -65,6 +65,8 @@ class CliTests(unittest.TestCase):
             str(self.overlay),
             "--reasoner",
             "sql",
+            "--retrieval",
+            "lexical",
             "--text",
             "Saya suka data dan pemrograman. Saya lulusan S1 dan job zone 4.",
             "--format",

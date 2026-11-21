@@ -20,7 +20,7 @@ class PolicyTests(unittest.TestCase):
         self.assertAlmostEqual(policy.component_weights["semantic"], 0.25)
         self.assertAlmostEqual(policy.component_weights["lexical"], 0.15)
         self.assertEqual(policy.description_preview_chars, 400)
-        self.assertEqual(policy.retrieval_mode, "auto")
+        self.assertEqual(policy.retrieval_mode, "ontology")
         self.assertEqual(policy.semantic_normalization, "minmax")
         self.assertGreater(policy.semantic_candidate_limit, 0)
         # The candidate limit is a safety cap: retrieval must rank the whole

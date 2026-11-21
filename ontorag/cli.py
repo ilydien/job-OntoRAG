@@ -35,6 +35,8 @@ def _pipeline(args: argparse.Namespace, reasoner_mode: str, retrieval: Optional[
         reasoner_mode=reasoner_mode,
         retrieval=retrieval or getattr(args, "retrieval", None),
         embedding_model=getattr(args, "embedding_model", None),
+        sparql_endpoint=getattr(args, "sparql_endpoint", None),
+        sparql_timeout=getattr(args, "sparql_timeout", None),
     )
 
 
@@ -68,6 +70,18 @@ def cmd_build_index(args: argparse.Namespace) -> int:
             ),
             verbose=not args.quiet,
         )
+    return 0
+
+
+def cmd_build_graph(args: argparse.Namespace) -> int:
+    from .graph_export import export_graph
+
+    target = Path(args.out)
+    if target.exists() and not args.rebuild:
+        print(f"Derived graph already exists: {target}", file=sys.stderr)
+        print("Use --rebuild to replace it.", file=sys.stderr)
+        return 2
+    export_graph(args.index, target, verbose=not args.quiet)
     return 0
 
 
@@ -335,6 +349,20 @@ def build_parser() -> argparse.ArgumentParser:
     build.add_argument("--embedding-model", default=None, help="sentence-transformers model id")
     build.set_defaults(func=cmd_build_index)
 
+    graph = sub.add_parser(
+        "build-graph",
+        help="export the derived RDF graph for Jena/Fuseki SPARQL retrieval",
+    )
+    graph.add_argument("--index", default=str(config.DEFAULT_INDEX), help="SQLite index path")
+    graph.add_argument(
+        "--out",
+        default=str(config.DATA_DIR / "ontorag_derived.nt"),
+        help="output N-Triples file",
+    )
+    graph.add_argument("--rebuild", action="store_true", help="replace an existing graph file")
+    graph.add_argument("--quiet", action="store_true", help="suppress progress output")
+    graph.set_defaults(func=cmd_build_graph)
+
     embeddings = sub.add_parser(
         "build-embeddings", help="embed occupation cards into the SQLite index"
     )
@@ -378,6 +406,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     recommend.add_argument("--embedding-model", default=None, help="sentence-transformers model id")
     recommend.add_argument(
+        "--sparql-endpoint",
+        default=None,
+        help="Jena/Fuseki SPARQL endpoint for --retrieval ontology",
+    )
+    recommend.add_argument(
+        "--sparql-timeout",
+        type=int,
+        default=None,
+        help="SPARQL request timeout in seconds",
+    )
+    recommend.add_argument(
         "--java",
         default=None,
         help="Java executable or JAVA_HOME for Pellet (default: auto-detect)",
@@ -410,6 +449,17 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark.add_argument("--format", choices=["table", "json"], default="table")
     benchmark.add_argument("--verbose", action="store_true", help="per-query scores")
     benchmark.add_argument("--embedding-model", default=None, help="sentence-transformers model id")
+    benchmark.add_argument(
+        "--sparql-endpoint",
+        default=None,
+        help="Jena/Fuseki SPARQL endpoint for --retrieval ontology",
+    )
+    benchmark.add_argument(
+        "--sparql-timeout",
+        type=int,
+        default=None,
+        help="SPARQL request timeout in seconds",
+    )
     benchmark.add_argument(
         "--java",
         default=None,

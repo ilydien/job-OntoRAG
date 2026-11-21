@@ -117,6 +117,16 @@ career:jobTitleEvidenceLimit a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:range xsd:integer ;
     rdfs:label "related-job-title evidence limit"@en .
 
+career:sparqlEndpoint a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:string ;
+    rdfs:label "Jena/Fuseki SPARQL endpoint"@en .
+
+career:sparqlTimeout a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:integer ;
+    rdfs:label "Jena/Fuseki SPARQL timeout (seconds)"@en .
+
 career:strongHollandThreshold a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:domain career:RankingPolicy ;
     rdfs:range xsd:decimal ;

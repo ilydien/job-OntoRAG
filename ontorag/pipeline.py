@@ -15,6 +15,7 @@ from .graph_search import (
     ontology_available,
     scores as ontology_scores,
 )
+from .jena_store import JenaStore, JenaUnavailable
 from .lexicon import Lexicon
 from .ontology import Ontology
 from .policy import IndexPolicy, RankingPolicy, load_index_policy, load_ranking_policy
@@ -36,6 +37,7 @@ class Pipeline:
         retriever: SemanticRetriever | None = None,
         retrieval_mode: Optional[str] = None,
         ontology_ready: bool = False,
+        jena_store: JenaStore | None = None,
     ) -> None:
         self.index = index
         self.ontology = ontology
@@ -45,6 +47,7 @@ class Pipeline:
         self.reasoner = reasoner or SqlReasoner(policy.fallback_tier)
         self.retriever = retriever
         self.ontology_ready = ontology_ready
+        self.jena_store = jena_store
         self.retrieval_mode = (retrieval_mode or policy.retrieval_mode or "auto").lower()
         self.catalog = ElementCatalog.from_rows(index.element_catalog_rows())
 
@@ -62,6 +65,8 @@ class Pipeline:
         retrieval: Optional[str] = None,
         embedding_model: Optional[str] = None,
         embedding_backend: Optional[EmbeddingBackend] = None,
+        sparql_endpoint: Optional[str] = None,
+        sparql_timeout: Optional[int] = None,
     ) -> "Pipeline":
         policy = load_ranking_policy(policy_path)
         index_policy = load_index_policy(index_policy_path)
@@ -83,12 +88,21 @@ class Pipeline:
         mode = (retrieval or policy.retrieval_mode or "auto").lower()
         if mode not in {"auto", "ontology", "semantic", "lexical", "hybrid"}:
             raise ValueError(f"unknown retrieval mode: {mode}")
-        ready = ontology_available()
+        rdflib_ready = ontology_available()
+        endpoint = (sparql_endpoint or policy.sparql_endpoint or "").strip()
+        jena_store: Optional[JenaStore] = None
+        if mode == "ontology" and endpoint:
+            jena_store = JenaStore(
+                endpoint,
+                timeout=sparql_timeout or policy.sparql_timeout,
+            )
+        ready = rdflib_ready or jena_store is not None
         if mode == "ontology" and not ready:
             index.close()
             raise GraphSearchUnavailable(
-                "ontology retrieval requested but rdflib is not installed; "
-                "install rdflib or use --retrieval semantic/lexical/hybrid"
+                "ontology retrieval requested but neither a Fuseki endpoint nor "
+                "rdflib is available; install rdflib, configure --sparql-endpoint, "
+                "or use --retrieval semantic/lexical/hybrid"
             )
         retriever: Optional[SemanticRetriever] = None
         if mode in {"auto", "semantic", "hybrid"}:
@@ -141,6 +155,7 @@ class Pipeline:
             retriever,
             mode,
             ontology_ready=ready,
+            jena_store=jena_store,
         )
 
     def close(self) -> None:
@@ -246,21 +261,28 @@ class Pipeline:
         semantic_scores: Dict[str, float] = {}
         lexical_scores: Dict[str, float] = {}
         ontology_scores_map: Dict[str, float] = {}
-        if (
-            self.retrieval_mode == "ontology"
-            and self.ontology_ready
-            and profile.elements
-            and element_rows is not None
-        ):
-            # The SPARQL path matches the profile's element individuals against
-            # the candidate occupations and traverses one related-occupation hop.
-            related_rows = self.index.related_for_many(candidate_iris)
-            ontology_scores_map = ontology_scores(
-                element_rows,
-                related_rows,
-                profile.elements,
-                self.policy.ontology_candidate_limit,
-            )
+        if self.retrieval_mode == "ontology" and profile.elements:
+            if self.jena_store is not None:
+                try:
+                    ontology_scores_map = self.jena_store.scores(
+                        profile.elements,
+                        self.policy.ontology_candidate_limit,
+                    )
+                except JenaUnavailable as exc:
+                    raise GraphSearchUnavailable(str(exc)) from exc
+            elif self.ontology_ready and element_rows is not None:
+                # Local fallback: materialise the candidate slice in rdflib.
+                related_rows = self.index.related_for_many(candidate_iris)
+                ontology_scores_map = ontology_scores(
+                    element_rows,
+                    related_rows,
+                    profile.elements,
+                    self.policy.ontology_candidate_limit,
+                )
+            else:
+                raise GraphSearchUnavailable(
+                    "ontology retrieval has no Fuseki endpoint and rdflib is unavailable"
+                )
         if self.retrieval_mode in {"semantic", "hybrid"}:
             if self.retriever is None:
                 raise RuntimeError("semantic retrieval requested but no retriever is configured")
