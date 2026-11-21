@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import tempfile
 import unittest
 from pathlib import Path
 
+from ontorag.extraction import Profile
 from ontorag.graph_search import RELATED_DECAY, related_sparql_query, sparql_query
 from ontorag.graph_search import scores as graph_scores
 from ontorag.index import build_index
@@ -82,6 +85,26 @@ class OntologyPipelineTests(unittest.TestCase):
             reasoner_mode="sql",
         ) as pipeline:
             self.assertEqual(pipeline.retrieval_mode, "ontology")
+
+    def test_ontology_without_elements_returns_empty_with_warning(self) -> None:
+        with Pipeline.from_paths(
+            index_path=self.index_path,
+            overlay_path=self.overlay,
+            reasoner_mode="sql",
+        ) as pipeline:
+            profile = Profile(
+                user_iri="urn:test:no-elements",
+                education_local="S1",
+                education_order=pipeline.ontology.education_order("S1"),
+                max_job_zone=4,
+                raw_text="Saya suka sesuatu yang tidak terdefinisi",
+                lexical_text="Saya suka sesuatu yang tidak terdefinisi",
+            )
+            stderr = io.StringIO()
+            with contextlib.redirect_stderr(stderr):
+                recommendations = pipeline.recommend(profile, top_k=5)
+        self.assertEqual(recommendations, [])
+        self.assertIn("found no profile elements", stderr.getvalue())
 
     def test_ontology_mode_adds_sparql_component(self) -> None:
         with Pipeline.from_paths(

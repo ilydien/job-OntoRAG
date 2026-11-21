@@ -139,9 +139,9 @@ The SQL path is the low-latency mode. Pellet is the tier-aware mode.
 python3 -m unittest discover -s tests -v
 ```
 
-- System Python (no owlready2/rdflib): 77 pass, 11 skipped (optional
+- System Python (no owlready2/rdflib): 80 pass, 12 skipped (optional
   Jena/rdflib, Pellet, and bundled-JRE tests).
-- `.venv` with `owlready2==0.48`, `rdflib`, and Java 21: 87 pass, 1 skipped
+- `.venv` with `owlready2==0.48`, `rdflib`, and Java 21: 91 pass, 1 skipped
   (bundled-JRE test), including the end-to-end Pellet/SWRL tier test.
 
 The suite covers the streaming parser, policy loading, lexicon and negation,
@@ -277,6 +277,14 @@ The post-pull validation pass added:
 - Inferred class IRIs and output tier labels are read from
   `career:DefaultReasoningOutputMap` in `config/reasoning_map.ttl`; the SQL
   fallback tier and evidence display limits come from the ranking policy.
+- Food-related lexicon entries map `memasak`, `dapur`, `koki`, and
+  `kuliner` to `Food Production`; empty ontology profiles now return no
+  recommendations with an explicit warning instead of zero-score alphabetic
+  results.
+- Additional concept entries cover athletics, stamina, body coordination,
+  public safety, engineering, electronics, mechanical/electronic repair,
+  agriculture, logistics, hospitality, energy, environment, and performing
+  arts.
 
 ## Semantic retrieval (occupation-card embeddings)
 
@@ -428,7 +436,7 @@ it works across owlready2 versions. Override it per request with
 - Retrieval now has a semantic path. Embedding build time and vector-table size
   for the full index are recorded in the semantic section; Recall@k/MRR now has
   a gold-query harness; the e5 model is available in this workspace and
-  occupation embeddings are built. The 88-test suite covers the plumbing with a
+  occupation embeddings are built. The 92-test suite covers the plumbing with a
   deterministic test backend and the optional Pellet and Jena/Fuseki paths.
 - Candidate recall is no longer truncated. A small gold query set with
   Recall@k/MRR measures ranking quality (`benchmark` command); the remaining

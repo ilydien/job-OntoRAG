@@ -250,6 +250,14 @@ class Pipeline:
         if not candidates:
             return []
 
+        if self.retrieval_mode == "ontology" and not profile.elements:
+            print(
+                "[ontorag] ontology retrieval found no profile elements; "
+                "add a more specific interest or use --retrieval lexical/semantic",
+                file=sys.stderr,
+            )
+            return []
+
         query_text = text if text is not None else (profile.lexical_text or profile.raw_text)
         candidate_iris = [str(row["iri"]) for row in candidates]
         # One batched element lookup shared by both scoring passes.

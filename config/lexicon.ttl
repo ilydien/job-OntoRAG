@@ -241,6 +241,20 @@ lex:entry_element_persuasion a lex:LexicalEntry ;
     lex:target "Persuasion" ;
     lex:weight "0.60"^^xsd:decimal .
 
+lex:entry_element_food_production a lex:LexicalEntry ;
+    rdfs:label "food preparation vocabulary"@en ;
+    lex:keyword "memasak", "masak", "dapur", "koki", "kuliner", "makanan", "cooking", "food preparation", "chef" ;
+    lex:targetKind "element" ;
+    lex:target "Food Production" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_food_service a lex:LexicalEntry ;
+    rdfs:label "food service vocabulary"@en ;
+    lex:keyword "pelayanan makanan", "melayani pelanggan", "restoran", "katering", "industri kuliner", "food service", "catering", "restaurant" ;
+    lex:targetKind "element" ;
+    lex:target "Service Orientation" ;
+    lex:weight "0.60"^^xsd:decimal .
+
 lex:entry_element_service a lex:LexicalEntry ;
     rdfs:label "service orientation vocabulary"@en ;
     lex:keyword "pelayanan", "melayani", "layanan pelanggan", "keramahtamahan", "service orientation", "customer service", "hospitality" ;
@@ -298,6 +312,104 @@ lex:entry_element_construction_phrase a lex:LexicalEntry ;
     lex:targetKind "element" ;
     lex:target "Building and Construction" ;
     lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_athletics a lex:LexicalEntry ;
+    rdfs:label "sports and athletics vocabulary"@en ;
+    lex:keyword "olahraga", "atlet", "atletik", "kebugaran", "kebugarannya", "latihan fisik", "fitness", "sport", "sports", "athletics" ;
+    lex:targetKind "element" ;
+    lex:target "Athletics" ;
+    lex:weight "0.65"^^xsd:decimal .
+
+lex:entry_element_stamina a lex:LexicalEntry ;
+    rdfs:label "stamina vocabulary"@en ;
+    lex:keyword "daya tahan", "stamina", "ketahanan fisik", "endurance" ;
+    lex:targetKind "element" ;
+    lex:target "Stamina" ;
+    lex:weight "0.55"^^xsd:decimal .
+
+lex:entry_element_body_coordination a lex:LexicalEntry ;
+    rdfs:label "body coordination vocabulary"@en ;
+    lex:keyword "koordinasi tubuh", "keseimbangan", "kelincahan", "body coordination", "balance", "agility" ;
+    lex:targetKind "element" ;
+    lex:target "Gross Body Coordination" ;
+    lex:weight "0.55"^^xsd:decimal .
+
+lex:entry_element_public_safety a lex:LexicalEntry ;
+    rdfs:label "public safety vocabulary"@en ;
+    lex:keyword "keamanan", "keselamatan", "patroli", "penyelidikan", "penegakan hukum", "pemadam kebakaran", "penyelamat", "security", "safety", "law enforcement", "police", "firefighter" ;
+    lex:targetKind "element" ;
+    lex:target "Public Safety and Security" ;
+    lex:weight "0.65"^^xsd:decimal .
+
+lex:entry_element_engineering a lex:LexicalEntry ;
+    rdfs:label "engineering vocabulary"@en ;
+    lex:keyword "teknik", "rekayasa", "insinyur", "mekanik", "elektronika", "listrik", "sipil", "robotika", "engineering", "mechanical", "electrical", "electronics", "civil", "robotics" ;
+    lex:targetKind "element" ;
+    lex:target "Engineering and Technology" ;
+    lex:weight "0.65"^^xsd:decimal .
+
+lex:entry_element_electronics a lex:LexicalEntry ;
+    rdfs:label "electronics and hardware vocabulary"@en ;
+    lex:keyword "komputer", "perangkat keras", "hardware", "embedded", "iot", "elektronik", "electronics" ;
+    lex:targetKind "element" ;
+    lex:target "Computers and Electronics" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_mechanical_repair a lex:LexicalEntry ;
+    rdfs:label "mechanical repair and automotive vocabulary"@en ;
+    lex:keyword "otomotif", "mobil", "motor", "kendaraan", "servis", "bengkel", "mekanik", "automotive", "vehicle", "repair", "maintenance" ;
+    lex:targetKind "element" ;
+    lex:target "Repairing and Maintaining Mechanical Equipment" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_electronics_repair a lex:LexicalEntry ;
+    rdfs:label "electronic repair vocabulary"@en ;
+    lex:keyword "servis elektronik", "perbaikan elektronik", "electronic repair", "electronics repair" ;
+    lex:targetKind "element" ;
+    lex:target "Repairing and Maintaining Electronic Equipment" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_agriculture a lex:LexicalEntry ;
+    rdfs:label "agriculture vocabulary"@en ;
+    lex:keyword "pertanian", "petani", "bercocok tanam", "panen", "tanaman", "perkebunan", "agriculture", "farming", "crops", "plantation" ;
+    lex:targetKind "element" ;
+    lex:target "Agriculture" ;
+    lex:weight "0.65"^^xsd:decimal .
+
+lex:entry_element_logistics a lex:LexicalEntry ;
+    rdfs:label "logistics and warehouse vocabulary"@en ;
+    lex:keyword "logistik", "pergudangan", "gudang", "distribusi", "rantai pasok", "supply chain", "warehouse", "logistics", "inventory" ;
+    lex:targetKind "element" ;
+    lex:target "Management of Material Resources" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_hospitality a lex:LexicalEntry ;
+    rdfs:label "hospitality and customer service vocabulary"@en ;
+    lex:keyword "perhotelan", "hotel", "pariwisata", "hospitality", "front office", "pelayanan pelanggan", "customer service" ;
+    lex:targetKind "element" ;
+    lex:target "Service Orientation" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_energy a lex:LexicalEntry ;
+    rdfs:label "energy vocabulary"@en ;
+    lex:keyword "energi", "energi terbarukan", "energi surya", "tenaga surya", "tenaga angin", "renewable energy", "solar energy", "wind energy" ;
+    lex:targetKind "element" ;
+    lex:target "Engineering and Technology" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_environment a lex:LexicalEntry ;
+    rdfs:label "environment and conservation vocabulary"@en ;
+    lex:keyword "lingkungan", "konservasi", "ekologi", "keberlanjutan", "environment", "conservation", "ecology", "sustainability" ;
+    lex:targetKind "element" ;
+    lex:target "Biology" ;
+    lex:weight "0.60"^^xsd:decimal .
+
+lex:entry_element_performing_arts a lex:LexicalEntry ;
+    rdfs:label "performing arts vocabulary"@en ;
+    lex:keyword "teater", "akting", "aktor", "film", "sinematografi", "pertunjukan", "theater", "acting", "film", "performance" ;
+    lex:targetKind "element" ;
+    lex:target "Fine Arts" ;
+    lex:weight "0.55"^^xsd:decimal .
 
 lex:entry_element_data_analysis a lex:LexicalEntry ;
     rdfs:label "data analysis vocabulary"@en ;

@@ -287,9 +287,9 @@ The index test builds a small SQLite index from a local fixture; the full
 - Pellet was validated with `owlready2==0.48` and Java 21 on a small candidate
   slice. A sample profile with S1/job-zone-4 constraints produced
   `EligibleStrong` results through SWRL.
-- The test suite currently contains 88 tests. In the system interpreter it
-  reports 77 passes and 11 skips (optional rdflib/Jena and Pellet tests); in
-  the prepared `.venv` with Java and `owlready2==0.48` it reports 87 passes and
+- The test suite currently contains 92 tests. In the system interpreter it
+  reports 80 passes and 12 skips (optional rdflib/Jena and Pellet tests); in
+  the prepared `.venv` with Java and `owlready2==0.48` it reports 91 passes and
   1 skip.
 - HermiT is intended for OWL 2 DL schema validation, not for the runtime SWRL
   built-ins used here; the bundled HermiT reports built-in atoms as unsupported.

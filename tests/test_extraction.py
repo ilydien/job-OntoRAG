@@ -31,6 +31,42 @@ class ExtractionTests(unittest.TestCase):
                     "Bangunan dan Konstruksi",
                 ),
                 ElementInfo("urn:element:design", "Design", "Desain"),
+                ElementInfo("urn:element:food", "Food Production", "Produksi Pangan"),
+                ElementInfo("urn:element:service", "Service Orientation", "Orientasi Pelayanan"),
+                ElementInfo("urn:element:athletics", "Athletics", "Atletik"),
+                ElementInfo("urn:element:stamina", "Stamina", "Daya Tahan"),
+                ElementInfo(
+                    "urn:element:body_coordination",
+                    "Gross Body Coordination",
+                    "Koordinasi Tubuh Kasar",
+                ),
+                ElementInfo(
+                    "urn:element:public_safety",
+                    "Public Safety and Security",
+                    "Keselamatan dan Keamanan Publik",
+                ),
+                ElementInfo(
+                    "urn:element:engineering",
+                    "Engineering and Technology",
+                    "Rekayasa dan Teknologi",
+                ),
+                ElementInfo(
+                    "urn:element:electronics",
+                    "Computers and Electronics",
+                    "Komputer dan Elektronik",
+                ),
+                ElementInfo(
+                    "urn:element:mech_repair",
+                    "Repairing and Maintaining Mechanical Equipment",
+                    "Memperbaiki dan Memelihara Peralatan Mekanik",
+                ),
+                ElementInfo("urn:element:agriculture", "Agriculture", "Pertanian"),
+                ElementInfo(
+                    "urn:element:logistics",
+                    "Management of Material Resources",
+                    "Pengelolaan Sumber Daya Material",
+                ),
+                ElementInfo("urn:element:fine_arts", "Fine Arts", "Seni Rupa"),
                 ElementInfo(
                     "urn:element:caring",
                     "Assisting and Caring for Others",
@@ -216,6 +252,28 @@ class ExtractionTests(unittest.TestCase):
         self.assertTrue(data_holland)
         self.assertIn("urn:element:data", profile.elements)
 
+    def test_cooking_maps_to_food_production(self) -> None:
+        profile = extract_from_text(
+            "Saya suka memasak di dapur dan membuat makanan.",
+            self.ontology,
+            self.lexicon,
+            self.catalog,
+            direct_element_weight=self.policy.direct_element_weight,
+            direct_element_min_length=self.policy.direct_element_min_length,
+        )
+        self.assertIn("urn:element:food", profile.elements)
+
+    def test_food_service_phrase_maps_to_service_orientation(self) -> None:
+        profile = extract_from_text(
+            "Saya suka pelayanan makanan dan melayani pelanggan di restoran.",
+            self.ontology,
+            self.lexicon,
+            self.catalog,
+            direct_element_weight=self.policy.direct_element_weight,
+            direct_element_min_length=self.policy.direct_element_min_length,
+        )
+        self.assertIn("urn:element:service", profile.elements)
+
     def test_web_pipeline_phrase_maps_to_programming(self) -> None:
         profile = extract_from_text(
             "Saya suka develop web dan membangun pipeline data.",
@@ -227,6 +285,28 @@ class ExtractionTests(unittest.TestCase):
         )
         self.assertIn("urn:element:programming", profile.elements)
         self.assertNotIn("urn:element:building", profile.elements)
+
+    def test_additional_domains_map_to_elements(self) -> None:
+        profile = extract_from_text(
+            "Saya suka olahraga, keamanan, teknik mesin, pertanian, logistik, "
+            "perhotelan, energi terbarukan, konservasi, dan teater.",
+            self.ontology,
+            self.lexicon,
+            self.catalog,
+            direct_element_weight=self.policy.direct_element_weight,
+            direct_element_min_length=self.policy.direct_element_min_length,
+        )
+        for iri in (
+            "urn:element:athletics",
+            "urn:element:public_safety",
+            "urn:element:engineering",
+            "urn:element:agriculture",
+            "urn:element:logistics",
+            "urn:element:service",
+            "urn:element:biology",
+            "urn:element:fine_arts",
+        ):
+            self.assertIn(iri, profile.elements)
 
     def test_profile_ttl_contains_user_constraints(self) -> None:
         profile = extract_from_text(
