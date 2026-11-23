@@ -63,6 +63,9 @@ function ResultCard({ item, index }) {
   const tier = TIERS[item.tier] || { label: item.tier, tone: 'low' }
   const scores = item.component_scores || {}
   const evidence = (item.evidence || []).slice(0, 2)
+  const education = (item.evidence || []).find(
+    (entry) => entry.kind === 'education'
+  )
 
   return (
     <article className={`card card--${tone}`}>
@@ -76,6 +79,9 @@ function ResultCard({ item, index }) {
 
       <h3>{item.title}</h3>
       <p className="soc">{item.soc}</p>
+      {education?.detail ? (
+        <p className="education">Min. pendidikan: {education.detail}</p>
+      ) : null}
       {item.description ? <p className="desc">{item.description}</p> : null}
 
       <div className="components">
