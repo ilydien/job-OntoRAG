@@ -33,6 +33,9 @@ def recommendation_dict(
         },
         "evidence": recommendation.evidence,
         "explanation": recommendation.explanation,
+        "skill_ready": bool(recommendation.reasoning_flags.get("skill_ready")),
+        "skill_gap": bool(recommendation.reasoning_flags.get("skill_gap")),
+        "skill_gaps": recommendation.reasoning_flags.get("skill_gaps", []),
     }
 
 
@@ -50,6 +53,15 @@ def recommendations_json(
             "max_job_zone": profile.max_job_zone if profile else None,
             "holland": profile.holland if profile else {},
             "elements": profile.element_labels if profile else {},
+            "skills": (
+                {
+                    profile.skill_labels.get(iri, iri): level
+                    for iri, level in profile.skill_levels.items()
+                }
+                if profile
+                else {}
+            ),
+            "skill_levels": profile.skill_levels if profile else {},
         },
         "recommendations": [
             recommendation_dict(item, language=language, precision=precision)

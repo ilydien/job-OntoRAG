@@ -1,6 +1,6 @@
 # OntoRAG implementation validation
 
-Date: 2026-11-21
+Date: 2026-11-23
 
 ## Inputs kept unchanged
 
@@ -30,22 +30,52 @@ Observed result:
 | occupations | 1,016 |
 | CompleteData occupations | 923 |
 | NoRatingData occupations | 93 |
-| occupation_ratings | 359,927 |
+| occupation_ratings | 368,234 |
+| scales | 33 |
+| task_ratings | 165,780 |
+| profile_ratings | 343,696 |
+| categories | 341 |
 | elements | 3,006 |
 | occupation_tasks | 18,838 |
 | occupation_job_titles | 54,269 |
 | occupation_related | 18,460 |
+| interest_activities | 188 |
+| interest_keywords | 75 |
 | occupation_fts | 1,016 |
 
-The generated SQLite index is about 429 MB. The build parses 708,528 ABox
-blocks with the streaming Turtle reader; the full ABox is never loaded as a
-single graph.
+The generated SQLite index is about 780 MB when the raw WorkContext source is
+included. The build streams the ABox plus optional profile sources; the full
+ABox is never loaded as a single graph. Index version 4 stores the
+`InterestsActivity`/`InterestsKeyword` vocabulary, graded
+`CareerInterestTypesRating` rows, O*NET scale metadata (`IM` importance and
+`LV` level), task ratings, education/training distributions, and work-context
+ratings.
 
 `show-meta` reports the source paths, ABox size/mtime, schema, overlay, and
-indexed rating types. It reports `parsed_ratings` (367,087) separately from
-`ratings` (359,927 inserted rows) because job-zone and suppressed ratings are
+indexed rating types. It reports `parsed_ratings` (375,394) separately from
+`ratings` (368,234 inserted rows) because job-zone and suppressed ratings are
 not part of `occupation_ratings`. Candidate retrieval excludes `NoRatingData`
 occupations by default.
+
+## Occupation profile: tasks and work context
+
+`profile --occupation <iri>` and `GET /api/occupation/profile` expose core
+and frequent tasks, linked DWAs, education/training distributions, and
+work-context ratings. The merged ABox supplies `TaskRating`,
+`EducationRating`, and `TrainingAndExperienceRating`; `WorkContextRating` is
+loaded from the raw O*NET source via `build-index --extra-source`.
+Work-context groups (indoor/outdoor, physical demand, teamwork/contact) are
+declared in `config/ranking_policy.ttl`, not hardcoded in Python.
+
+## Occupation requirement lookup
+
+`requirements --occupation <iri>` and
+`GET /api/occupation/requirements?iri=<iri>` expose the requirements already
+stored in the index: minimum education, job zone, and the top rated essential
+skills, transferable skills, knowledge, abilities, and work activities. The
+category order and per-category limit are declared in
+`config/ranking_policy.ttl`. This is a descriptive view; eligibility remains
+education plus job-zone logic, not a skill-threshold rule.
 
 ## SWRL and Pellet validation
 
@@ -60,6 +90,8 @@ Rules:
 - `rules/match_flags.swrl.ttl`: strong Holland match using
   `career:strongHollandThreshold`.
 - `rules/tier.swrl.ttl`: `EligibleStrong` tier.
+- `rules/skill_readiness.swrl.ttl`: `SkillReady`/`SkillGap` from user-declared
+  proficiency on the O*NET Level scale.
 
 Runtime bundle contents: English schema, app vocabulary, ranking policy, SWRL
 rules, one profile, and a shortlist of candidates. The bundle is serialized to
@@ -110,7 +142,11 @@ For the sample profile above:
 Each result includes:
 
 - logical tier and generic component scores;
-- Holland alignment;
+- Holland alignment from graded `CareerInterestTypesRating` values when
+  available, with primary/secondary/tertiary codes as fallback;
+- grounded O*NET interest cues as the primary Holland source
+  (`career:interestPrimary true`), with the manual Holland lexicon used only
+  when no interest cue matches;
 - normalized element ratings;
 - optional semantic occupation-card similarity;
 - FTS5/BM25 lexical similarity, explicitly labeled lexical;
@@ -139,9 +175,9 @@ The SQL path is the low-latency mode. Pellet is the tier-aware mode.
 python3 -m unittest discover -s tests -v
 ```
 
-- System Python (no owlready2/rdflib): 80 pass, 12 skipped (optional
+- System Python (no owlready2/rdflib): 96 pass, 13 skipped (optional
   Jena/rdflib, Pellet, and bundled-JRE tests).
-- `.venv` with `owlready2==0.48`, `rdflib`, and Java 21: 91 pass, 1 skipped
+- `.venv` with `owlready2==0.48`, `rdflib`, and Java 21: 108 pass, 1 skipped
   (bundled-JRE test), including the end-to-end Pellet/SWRL tier test.
 
 The suite covers the streaming parser, policy loading, lexicon and negation,

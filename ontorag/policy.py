@@ -20,6 +20,27 @@ class ScoringComponent:
     order: int
 
 
+@dataclass(frozen=True)
+class ProfileGroup:
+    iri: str
+    key: str
+    label_en: str
+    label_id: str
+    order: int
+    elements: List[str]
+
+
+@dataclass(frozen=True)
+class RequirementCategory:
+    iri: str
+    key: str
+    rating_type: str
+    label_en: str
+    label_id: str
+    order: int
+    limit: int
+
+
 @dataclass
 class RankingPolicy:
     iri: str
@@ -43,6 +64,12 @@ class RankingPolicy:
     task_evidence_limit: int
     job_title_evidence_limit: int
     description_preview_chars: int
+    interest_primary: bool
+    skill_level_min: float
+    skill_level_max: float
+    skill_requirement_scale_id: str
+    interest_activity_weight: float
+    interest_keyword_weight: float
     direct_element_weight: float
     direct_element_min_length: int
     holland_primary_weight: float
@@ -63,6 +90,8 @@ class RankingPolicy:
     sparql_endpoint: Optional[str] = None
     sparql_timeout: int = 30
     metadata: Dict[str, object] = field(default_factory=dict)
+    requirement_categories: List[RequirementCategory] = field(default_factory=list)
+    profile_groups: List[ProfileGroup] = field(default_factory=list)
 
     @property
     def component_weights(self) -> Dict[str, float]:
@@ -91,6 +120,11 @@ class IndexPolicy:
     embedding_max_elements: int = 12
     embedding_max_job_titles: int = 5
     embedding_card_version: str = "1"
+    profile_rating_types: List[str] = field(default_factory=list)
+    extra_sources: List[Path] = field(default_factory=list)
+    core_task_type: str = "Core"
+    task_relevance_scale_id: str = "RT"
+    task_frequency_scale_id: str = "FT"
 
     @property
     def indexed_rating_type_iris(self) -> List[str]:
@@ -186,6 +220,80 @@ def load_ranking_policy(path: str | Path = config.DEFAULT_POLICY) -> RankingPoli
         )
     components.sort(key=lambda item: (item.order, item.iri))
 
+    requirement_categories: List[RequirementCategory] = []
+    for term in p.get(config.CAREER + "hasRequirementCategory", []):
+        if term.kind != "iri":
+            continue
+        category = blocks.get(term.value, {})
+        if not category:
+            raise ValueError(f"requirement category {term.value} not found in {path}")
+        rating_type = ttl_stream.literal_value(
+            category, config.CAREER + "requirementRatingType", None
+        )
+        order = ttl_stream.numeric_value(
+            category, config.CAREER + "requirementCategoryOrder", None
+        )
+        category_limit = ttl_stream.numeric_value(
+            category, config.CAREER + "requirementCategoryLimit", None
+        )
+        if not rating_type or order is None or category_limit is None:
+            raise ValueError(
+                f"requirement category {term.value} lacks rating type, order, or limit"
+            )
+        label_terms_id = ttl_stream.literal_values(
+            category, config.RDFS + "label", "id"
+        )
+        label_terms_en = ttl_stream.literal_values(
+            category, config.RDFS + "label", "en"
+        )
+        fallback = local_name(term.value)
+        label_id = label_terms_id[0].value if label_terms_id else fallback
+        label_en = label_terms_en[0].value if label_terms_en else fallback
+        requirement_categories.append(
+            RequirementCategory(
+                iri=term.value,
+                key=local_name(term.value),
+                rating_type=rating_type,
+                label_en=label_en,
+                label_id=label_id,
+                order=int(order),
+                limit=int(category_limit),
+            )
+        )
+    requirement_categories.sort(key=lambda item: (item.order, item.iri))
+
+    profile_groups: List[ProfileGroup] = []
+    for term in p.get(config.CAREER + "hasProfileGroup", []):
+        if term.kind != "iri":
+            continue
+        group = blocks.get(term.value, {})
+        if not group:
+            raise ValueError(f"profile group {term.value} not found in {path}")
+        order = ttl_stream.numeric_value(
+            group, config.CAREER + "profileGroupOrder", None
+        )
+        elements = [
+            item.value
+            for item in group.get(config.CAREER + "profileGroupElement", [])
+            if item.kind == "iri"
+        ]
+        if order is None or not elements:
+            raise ValueError(f"profile group {term.value} lacks order or elements")
+        label_id = ttl_stream.literal_values(group, config.RDFS + "label", "id")
+        label_en = ttl_stream.literal_values(group, config.RDFS + "label", "en")
+        fallback = local_name(term.value)
+        profile_groups.append(
+            ProfileGroup(
+                iri=term.value,
+                key=local_name(term.value),
+                label_id=label_id[0].value if label_id else fallback,
+                label_en=label_en[0].value if label_en else fallback,
+                order=int(order),
+                elements=elements,
+            )
+        )
+    profile_groups.sort(key=lambda item: (item.order, item.iri))
+
     lexicon_path = config.resolve_project_path(
         required_string(config.CAREER + "lexiconFile")
     )
@@ -219,6 +327,14 @@ def load_ranking_policy(path: str | Path = config.DEFAULT_POLICY) -> RankingPoli
         task_evidence_limit=required_int(config.CAREER + "taskEvidenceLimit"),
         job_title_evidence_limit=required_int(config.CAREER + "jobTitleEvidenceLimit"),
         description_preview_chars=required_int(config.CAREER + "descriptionPreviewChars"),
+        interest_primary=required_bool(config.CAREER + "interestPrimary"),
+        skill_level_min=required_float(config.CAREER + "skillLevelMin"),
+        skill_level_max=required_float(config.CAREER + "skillLevelMax"),
+        skill_requirement_scale_id=required_string(
+            config.CAREER + "skillRequirementScaleId"
+        ),
+        interest_activity_weight=required_float(config.CAREER + "interestActivityWeight"),
+        interest_keyword_weight=required_float(config.CAREER + "interestKeywordWeight"),
         direct_element_weight=required_float(config.CAREER + "directElementWeight"),
         direct_element_min_length=required_int(config.CAREER + "directElementMinLength"),
         holland_primary_weight=required_float(config.CAREER + "hollandPrimaryWeight"),
@@ -230,6 +346,8 @@ def load_ranking_policy(path: str | Path = config.DEFAULT_POLICY) -> RankingPoli
         lexicon_file=lexicon_path,
         reasoning_map_file=reasoning_map_path,
         index_policy_iri=index_policy,
+        requirement_categories=requirement_categories,
+        profile_groups=profile_groups,
         retrieval_mode=optional_string(config.CAREER + "retrievalMode", "auto") or "auto",
         semantic_normalization=optional_string(config.CAREER + "semanticNormalization", "minmax") or "minmax",
         semantic_candidate_limit=optional_int(config.CAREER + "semanticCandidateLimit", 2000),
@@ -299,6 +417,25 @@ def load_index_policy(path: str | Path = config.DEFAULT_INDEX_POLICY) -> IndexPo
     embedding_card_version = ttl_stream.literal_value(
         p, config.CAREER + "embeddingCardVersion", None
     ) or "1"
+    profile_rating_types = [
+        t.value
+        for t in p.get(config.CAREER + "profileRatingType", [])
+        if t.kind == "literal"
+    ]
+    extra_sources = [
+        config.resolve_project_path(t.value)
+        for t in p.get(config.CAREER + "extraSource", [])
+        if t.kind == "literal"
+    ]
+    core_task_type = ttl_stream.literal_value(
+        p, config.CAREER + "coreTaskType", "Core"
+    ) or "Core"
+    task_relevance_scale_id = ttl_stream.literal_value(
+        p, config.CAREER + "taskRelevanceScaleId", "RT"
+    ) or "RT"
+    task_frequency_scale_id = ttl_stream.literal_value(
+        p, config.CAREER + "taskFrequencyScaleId", "FT"
+    ) or "FT"
     return IndexPolicy(
         iri=policy_iri,
         name=ttl_stream.literal_value(p, config.RDFS + "label", local_name(policy_iri)) or local_name(policy_iri),
@@ -314,4 +451,9 @@ def load_index_policy(path: str | Path = config.DEFAULT_INDEX_POLICY) -> IndexPo
         embedding_max_elements=int(embedding_max_elements) if embedding_max_elements is not None else 12,
         embedding_max_job_titles=int(embedding_max_job_titles) if embedding_max_job_titles is not None else 5,
         embedding_card_version=embedding_card_version,
+        profile_rating_types=profile_rating_types,
+        extra_sources=extra_sources,
+        core_task_type=core_task_type,
+        task_relevance_scale_id=task_relevance_scale_id,
+        task_frequency_scale_id=task_frequency_scale_id,
     )

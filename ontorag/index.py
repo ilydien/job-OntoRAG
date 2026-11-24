@@ -49,6 +49,30 @@ class ElementRecord:
     iri: str
     name_en: Optional[str] = None
     description_en: Optional[str] = None
+    illustrated_by: List[str] = field(default_factory=list)
+    linked_to: List[str] = field(default_factory=list)
+
+
+@dataclass
+class InterestActivityRecord:
+    iri: str
+    text_en: Optional[str] = None
+
+
+@dataclass
+class InterestKeywordRecord:
+    iri: str
+    keyword_en: Optional[str] = None
+    keyword_type: Optional[str] = None
+
+
+@dataclass
+class ScaleRecord:
+    iri: str
+    scale_id: Optional[str] = None
+    name_en: Optional[str] = None
+    minimum: Optional[float] = None
+    maximum: Optional[float] = None
 
 
 @dataclass
@@ -56,6 +80,42 @@ class TaskRecord:
     iri: str
     text_en: Optional[str] = None
     task_id: Optional[int] = None
+    task_type: Optional[str] = None
+    dwa_links: List[str] = field(default_factory=list)
+
+
+@dataclass
+class TaskRatingRecord:
+    iri: str
+    task_iri: Optional[str] = None
+    category_iri: Optional[str] = None
+    scale_iri: Optional[str] = None
+    value: Optional[float] = None
+    n: Optional[float] = None
+
+
+@dataclass
+class TaskDWARecord:
+    iri: str
+    dwa_element_iri: Optional[str] = None
+
+
+@dataclass
+class CategoryRecord:
+    iri: str
+    category: Optional[int] = None
+    description: Optional[str] = None
+
+
+@dataclass
+class ProfileRatingRecord:
+    iri: str
+    rating_type: str
+    element_iri: Optional[str] = None
+    scale_iri: Optional[str] = None
+    category_iri: Optional[str] = None
+    value: Optional[float] = None
+    n: Optional[float] = None
 
 
 @dataclass
@@ -88,13 +148,18 @@ class ParsedABox:
     job_titles: Dict[str, JobTitleRecord] = field(default_factory=dict)
     job_zones: Dict[str, JobZoneRecord] = field(default_factory=dict)
     linkages: Dict[str, LinkageRecord] = field(default_factory=dict)
+    interest_activities: Dict[str, InterestActivityRecord] = field(default_factory=dict)
+    interest_keywords: Dict[str, InterestKeywordRecord] = field(default_factory=dict)
+    scales: Dict[str, ScaleRecord] = field(default_factory=dict)
+    task_ratings: Dict[str, TaskRatingRecord] = field(default_factory=dict)
+    task_dwas: Dict[str, TaskDWARecord] = field(default_factory=dict)
+    categories: Dict[str, CategoryRecord] = field(default_factory=dict)
+    profile_ratings: Dict[str, ProfileRatingRecord] = field(default_factory=dict)
 
 
 DROP_PREDICATES = {
     config.ONET + "hasReportedTitle",
     config.ONET + "hasEmergingTask",
-    config.ONET + "hasDWA",
-    config.ONET + "refersTo",
     config.ONET + "referencedBy",
     config.ONET + "ratingOf",
     config.ONET + "taskOf",
@@ -111,17 +176,11 @@ DROP_PREDICATES = {
     config.ONET + "shortTitle",
     config.ONET + "shownInMyNextMove",
     config.ONET + "incumbentsResponding",
-    config.ONET + "taskType",
     config.ONET + "svpRange",
     config.ONET + "experience",
     config.ONET + "education",
     config.ONET + "jobTraining",
     config.ONET + "examples",
-    config.ONET + "scaleID",
-    config.ONET + "scaleName",
-    config.ONET + "minimum",
-    config.ONET + "maximum",
-    config.ONET + "ratingCategory",
     config.ONET + "elementID",
 }
 
@@ -176,6 +235,7 @@ CREATE TABLE IF NOT EXISTS occupation_tasks (
     task_en TEXT,
     task_id INTEGER,
     task_id_text TEXT,
+    task_type TEXT,
     PRIMARY KEY (occupation_iri, task_iri)
 );
 
@@ -201,6 +261,65 @@ CREATE TABLE IF NOT EXISTS elements (
     name_id TEXT,
     description_en TEXT,
     description_id TEXT
+);
+
+CREATE TABLE IF NOT EXISTS interest_activities (
+    iri TEXT PRIMARY KEY,
+    text_en TEXT,
+    text_id TEXT,
+    riasec_local TEXT,
+    riasec_iri TEXT
+);
+
+CREATE TABLE IF NOT EXISTS interest_keywords (
+    iri TEXT PRIMARY KEY,
+    keyword_en TEXT,
+    keyword_id TEXT,
+    keyword_type TEXT,
+    riasec_local TEXT,
+    riasec_iri TEXT
+);
+
+CREATE TABLE IF NOT EXISTS scales (
+    iri TEXT PRIMARY KEY,
+    scale_id TEXT,
+    name_en TEXT,
+    minimum REAL,
+    maximum REAL
+);
+
+CREATE TABLE IF NOT EXISTS categories (
+    iri TEXT PRIMARY KEY,
+    category INTEGER,
+    description TEXT
+);
+
+CREATE TABLE IF NOT EXISTS task_ratings (
+    task_iri TEXT NOT NULL,
+    rating_iri TEXT NOT NULL,
+    category_iri TEXT,
+    scale_iri TEXT,
+    value REAL,
+    n REAL,
+    PRIMARY KEY (task_iri, rating_iri)
+);
+
+CREATE TABLE IF NOT EXISTS task_dwa (
+    task_iri TEXT NOT NULL,
+    dwa_element_iri TEXT NOT NULL,
+    PRIMARY KEY (task_iri, dwa_element_iri)
+);
+
+CREATE TABLE IF NOT EXISTS profile_ratings (
+    occupation_iri TEXT NOT NULL,
+    rating_iri TEXT NOT NULL,
+    rating_type TEXT,
+    element_iri TEXT,
+    scale_iri TEXT,
+    category_iri TEXT,
+    value REAL,
+    n REAL,
+    PRIMARY KEY (occupation_iri, rating_iri)
 );
 
 CREATE TABLE IF NOT EXISTS education_levels (
@@ -251,9 +370,11 @@ class IndexBuilder:
         overlay: str | Path | None = None,
         index: str | Path = config.DEFAULT_INDEX,
         index_policy: str | Path = config.DEFAULT_INDEX_POLICY,
+        extra_sources: Optional[Sequence[str | Path]] = None,
         verbose: bool = True,
     ) -> None:
         self.abox = Path(abox)
+        self.extra_sources = [Path(item) for item in (extra_sources or [])]
         self.schema = Path(schema or (config.SCHEMA_EN if config.SCHEMA_EN.exists() else config.SCHEMA_FALLBACK))
         self.overlay = Path(overlay) if overlay else config.find_overlay()
         self.index = Path(index)
@@ -299,8 +420,12 @@ class IndexBuilder:
             self._insert_occupations(conn, parsed, ontology)
             self._insert_ratings(conn, parsed)
             self._insert_tasks(conn, parsed, ontology)
+            self._insert_task_details(conn, parsed)
+            self._insert_profile_ratings(conn, parsed)
             self._insert_job_titles(conn, parsed, ontology)
             self._insert_related(conn, parsed)
+            self._insert_scales(conn, parsed)
+            self._insert_interest(conn, parsed, ontology)
             self._insert_fts(conn, parsed, ontology)
             self._insert_meta(conn, policy, parsed)
             conn.commit()
@@ -323,139 +448,314 @@ class IndexBuilder:
     def _parse_abox(self, policy: IndexPolicy) -> ParsedABox:
         parsed = ParsedABox()
         indexed_types = set(policy.indexed_rating_types)
+        profile_types = set(policy.profile_rating_types)
         types_by_subject: Dict[str, set[str]] = {}
         count = 0
-        for subject, predicates in ttl_stream.iter_blocks(
-            self.abox, drop_predicates=DROP_PREDICATES
-        ):
-            if not subject.is_iri:
-                continue
-            subject_iri = subject.value
-            block_types = {
-                local_name(t.value)
-                for t in predicates.get(RDF_TYPE, [])
-                if t.kind == "iri"
-            }
-            if block_types:
-                types_by_subject.setdefault(subject_iri, set()).update(block_types)
-            subject_types = types_by_subject.get(subject_iri, set())
-            count += 1
-            if count % 200000 == 0:
-                self._log(f"  parsed {count:,} blocks...")
-            if "Occupation" in subject_types:
-                record = OccupationRecord(
-                    iri=subject_iri,
-                    soc=ttl_stream.literal_value(predicates, config.ONET + "onetSOCCode"),
-                    title_en=ttl_stream.literal_value(predicates, config.ONET + "title"),
-                    description_en=ttl_stream.literal_value(predicates, config.ONET + "description"),
-                    data_status=_local_of_iri(
-                        ttl_stream.iri_value(predicates, config.CAREER + "hasDataStatus")
-                    ),
-                    education_iri=ttl_stream.iri_value(
-                        predicates, config.CAREER + "hasMinEducationLevel"
-                    ),
-                    holland_primary=_local_of_iri(
-                        ttl_stream.iri_value(predicates, config.CAREER + "hasPrimaryHollandCode")
-                    ),
-                    holland_secondary=_local_of_iri(
-                        ttl_stream.iri_value(predicates, config.CAREER + "hasSecondaryHollandCode")
-                    ),
-                    holland_tertiary=_local_of_iri(
-                        ttl_stream.iri_value(predicates, config.CAREER + "hasTertiaryHollandCode")
-                    ),
-                    ratings=ttl_stream.iri_values(predicates, config.ONET + "hasRating"),
-                    tasks=ttl_stream.iri_values(predicates, config.ONET + "hasTask"),
-                    job_titles=ttl_stream.iri_values(predicates, config.ONET + "hasJobTitle"),
-                    related_linkages=ttl_stream.iri_values(
-                        predicates, config.ONET + "hasRelatedOccupation"
-                    ),
-                    linked_to=ttl_stream.iri_values(predicates, config.ONET + "linkedTo"),
-                )
-                parsed.occupations[subject_iri] = _merge_record(
-                    parsed.occupations.get(subject_iri), record
-                )
-            elif "Element" in subject_types:
-                record = ElementRecord(
-                    iri=subject_iri,
-                    name_en=ttl_stream.literal_value(predicates, config.ONET + "elementName"),
-                    description_en=ttl_stream.literal_value(predicates, config.ONET + "description"),
-                )
-                parsed.elements[subject_iri] = _merge_record(
-                    parsed.elements.get(subject_iri), record
-                )
-            elif "Task" in subject_types:
-                task_id = ttl_stream.numeric_value(predicates, config.ONET + "taskID", None)
-                record = TaskRecord(
-                    iri=subject_iri,
-                    text_en=ttl_stream.literal_value(predicates, config.ONET + "task"),
-                    task_id=int(task_id) if task_id is not None else None,
-                )
-                parsed.tasks[subject_iri] = _merge_record(
-                    parsed.tasks.get(subject_iri), record
-                )
-            elif "JobTitle" in subject_types:
-                record = JobTitleRecord(
-                    iri=subject_iri,
-                    title_en=ttl_stream.literal_value(predicates, config.ONET + "jobTitle"),
-                )
-                parsed.job_titles[subject_iri] = _merge_record(
-                    parsed.job_titles.get(subject_iri), record
-                )
-            elif "JobZone" in subject_types:
-                zone = ttl_stream.numeric_value(predicates, config.ONET + "jobZone", None)
-                record = JobZoneRecord(
-                    iri=subject_iri,
-                    zone=int(zone) if zone is not None else None,
-                    name_en=ttl_stream.literal_value(predicates, config.ONET + "name"),
-                )
-                parsed.job_zones[subject_iri] = _merge_record(
-                    parsed.job_zones.get(subject_iri), record
-                )
-            elif "RelatedOccupationLinkage" in subject_types:
-                idx = ttl_stream.numeric_value(predicates, config.ONET + "relatedIndex", None)
-                record = LinkageRecord(
-                    iri=subject_iri,
-                    related_iri=ttl_stream.iri_value(
-                        predicates, config.ONET + "relatedOccupation"
-                    ),
-                    tier=ttl_stream.literal_value(
-                        predicates, config.ONET + "relatednessTier"
-                    ),
-                    idx=int(idx) if idx is not None else None,
-                )
-                parsed.linkages[subject_iri] = _merge_record(
-                    parsed.linkages.get(subject_iri), record
-                )
-            else:
-                rating_type = next((t for t in subject_types if t in indexed_types), None)
-                if rating_type or "JobZoneRating" in subject_types:
-                    rated_element = ttl_stream.iri_value(
-                        predicates, config.ONET + "ratedElement"
-                    )
-                    rated_zone = ttl_stream.iri_value(
-                        predicates, config.ONET + "ratedJobZone"
-                    )
-                    value = ttl_stream.numeric_value(
-                        predicates, config.ONET + "dataValue", None
-                    )
-                    suppressed_term = ttl_stream.first(
-                        predicates, config.ONET + "recommendSuppress"
-                    )
-                    suppressed = bool(suppressed_term.python_value()) if suppressed_term else False
-                    record = RatingRecord(
+        for source in [self.abox, *self.extra_sources]:
+            if not source.exists():
+                raise FileNotFoundError(f"ABox source not found: {source}")
+            self._log(f"Streaming source from {source}")
+            for subject, predicates in ttl_stream.iter_blocks(
+                source, drop_predicates=DROP_PREDICATES
+            ):
+                if not subject.is_iri:
+                    continue
+                subject_iri = subject.value
+                block_types = {
+                    local_name(t.value)
+                    for t in predicates.get(RDF_TYPE, [])
+                    if t.kind == "iri"
+                }
+                if block_types:
+                    types_by_subject.setdefault(subject_iri, set()).update(block_types)
+                subject_types = types_by_subject.get(subject_iri, set())
+                count += 1
+                if count % 200000 == 0:
+                    self._log(f"  parsed {count:,} blocks...")
+                if "Occupation" in subject_types:
+                    record = OccupationRecord(
                         iri=subject_iri,
-                        rating_type=rating_type or "JobZoneRating",
-                        value=value,
-                        element_iri=rated_element,
+                        soc=ttl_stream.literal_value(predicates, config.ONET + "onetSOCCode"),
+                        title_en=ttl_stream.literal_value(predicates, config.ONET + "title"),
+                        description_en=ttl_stream.literal_value(predicates, config.ONET + "description"),
+                        data_status=_local_of_iri(
+                            ttl_stream.iri_value(predicates, config.CAREER + "hasDataStatus")
+                        ),
+                        education_iri=ttl_stream.iri_value(
+                            predicates, config.CAREER + "hasMinEducationLevel"
+                        ),
+                        holland_primary=_local_of_iri(
+                            ttl_stream.iri_value(predicates, config.CAREER + "hasPrimaryHollandCode")
+                        ),
+                        holland_secondary=_local_of_iri(
+                            ttl_stream.iri_value(predicates, config.CAREER + "hasSecondaryHollandCode")
+                        ),
+                        holland_tertiary=_local_of_iri(
+                            ttl_stream.iri_value(predicates, config.CAREER + "hasTertiaryHollandCode")
+                        ),
+                        ratings=ttl_stream.iri_values(predicates, config.ONET + "hasRating"),
+                        tasks=ttl_stream.iri_values(predicates, config.ONET + "hasTask"),
+                        job_titles=ttl_stream.iri_values(predicates, config.ONET + "hasJobTitle"),
+                        related_linkages=ttl_stream.iri_values(
+                            predicates, config.ONET + "hasRelatedOccupation"
+                        ),
+                        linked_to=ttl_stream.iri_values(predicates, config.ONET + "linkedTo"),
+                    )
+                    parsed.occupations[subject_iri] = _merge_record(
+                        parsed.occupations.get(subject_iri), record
+                    )
+                elif "Element" in subject_types:
+                    record = ElementRecord(
+                        iri=subject_iri,
+                        name_en=ttl_stream.literal_value(predicates, config.ONET + "elementName"),
+                        description_en=ttl_stream.literal_value(predicates, config.ONET + "description"),
+                        illustrated_by=ttl_stream.iri_values(
+                            predicates, config.ONET + "illustratedBy"
+                        ),
+                        linked_to=ttl_stream.iri_values(predicates, config.ONET + "linkedTo"),
+                    )
+                    parsed.elements[subject_iri] = _merge_record(
+                        parsed.elements.get(subject_iri), record
+                    )
+                elif "InterestsActivity" in subject_types:
+                    record = InterestActivityRecord(
+                        iri=subject_iri,
+                        text_en=ttl_stream.literal_value(predicates, config.ONET + "activity"),
+                    )
+                    parsed.interest_activities[subject_iri] = _merge_record(
+                        parsed.interest_activities.get(subject_iri), record
+                    )
+                elif "InterestsKeyword" in subject_types:
+                    record = InterestKeywordRecord(
+                        iri=subject_iri,
+                        keyword_en=ttl_stream.literal_value(predicates, config.ONET + "keyword"),
+                        keyword_type=ttl_stream.literal_value(
+                            predicates, config.ONET + "keywordType"
+                        ),
+                    )
+                    parsed.interest_keywords[subject_iri] = _merge_record(
+                        parsed.interest_keywords.get(subject_iri), record
+                    )
+                elif "Scale" in subject_types:
+                    record = ScaleRecord(
+                        iri=subject_iri,
+                        scale_id=ttl_stream.literal_value(
+                            predicates, config.ONET + "scaleID"
+                        ),
+                        name_en=ttl_stream.literal_value(
+                            predicates, config.ONET + "scaleName"
+                        ),
+                        minimum=ttl_stream.numeric_value(
+                            predicates, config.ONET + "minimum", None
+                        ),
+                        maximum=ttl_stream.numeric_value(
+                            predicates, config.ONET + "maximum", None
+                        ),
+                    )
+                    parsed.scales[subject_iri] = _merge_record(
+                        parsed.scales.get(subject_iri), record
+                    )
+                elif "Task" in subject_types:
+                    task_id = ttl_stream.numeric_value(predicates, config.ONET + "taskID", None)
+                    record = TaskRecord(
+                        iri=subject_iri,
+                        text_en=ttl_stream.literal_value(predicates, config.ONET + "task"),
+                        task_id=int(task_id) if task_id is not None else None,
+                        task_type=ttl_stream.literal_value(
+                            predicates, config.ONET + "taskType"
+                        ),
+                        dwa_links=ttl_stream.iri_values(
+                            predicates, config.ONET + "hasDWA"
+                        ),
+                    )
+                    parsed.tasks[subject_iri] = _merge_record(
+                        parsed.tasks.get(subject_iri), record
+                    )
+                elif "JobTitle" in subject_types:
+                    record = JobTitleRecord(
+                        iri=subject_iri,
+                        title_en=ttl_stream.literal_value(predicates, config.ONET + "jobTitle"),
+                    )
+                    parsed.job_titles[subject_iri] = _merge_record(
+                        parsed.job_titles.get(subject_iri), record
+                    )
+                elif "JobZone" in subject_types:
+                    zone = ttl_stream.numeric_value(predicates, config.ONET + "jobZone", None)
+                    record = JobZoneRecord(
+                        iri=subject_iri,
+                        zone=int(zone) if zone is not None else None,
+                        name_en=ttl_stream.literal_value(predicates, config.ONET + "name"),
+                    )
+                    parsed.job_zones[subject_iri] = _merge_record(
+                        parsed.job_zones.get(subject_iri), record
+                    )
+                elif "TaskRating" in subject_types:
+                    refs = ttl_stream.iri_values(
+                        predicates, config.ONET + "refersTo"
+                    )
+                    task_iri = ttl_stream.iri_value(
+                        predicates, config.ONET + "ratedTask"
+                    )
+                    if not task_iri:
+                        task_iri = next(
+                            (item for item in refs if "/Task/" in item), None
+                        )
+                    category_iri = ttl_stream.iri_value(
+                        predicates, config.ONET + "ratingCategory"
+                    )
+                    if not category_iri:
+                        category_iri = next(
+                            (item for item in refs if "/TaskCategory/" in item), None
+                        )
+                    record = TaskRatingRecord(
+                        iri=subject_iri,
+                        task_iri=task_iri,
+                        category_iri=category_iri,
                         scale_iri=ttl_stream.iri_value(
                             predicates, config.ONET + "ratingScale"
                         ),
-                        job_zone_iri=rated_zone,
-                        suppressed=suppressed,
+                        value=ttl_stream.numeric_value(
+                            predicates, config.ONET + "dataValue", None
+                        ),
+                        n=ttl_stream.numeric_value(predicates, config.ONET + "n", None),
                     )
-                    parsed.ratings[subject_iri] = _merge_record(
-                        parsed.ratings.get(subject_iri), record
+                    parsed.task_ratings[subject_iri] = record
+                elif "TaskDWALinkage" in subject_types:
+                    refs = ttl_stream.iri_values(
+                        predicates, config.ONET + "refersTo"
                     )
+                    dwa_element = ttl_stream.iri_value(
+                        predicates, config.ONET + "dwaElement"
+                    )
+                    if not dwa_element:
+                        dwa_element = next(
+                            (item for item in refs if "/Element/" in item), None
+                        )
+                    record = TaskDWARecord(
+                        iri=subject_iri, dwa_element_iri=dwa_element
+                    )
+                    parsed.task_dwas[subject_iri] = record
+                elif any(
+                    item.endswith("Category") for item in subject_types
+                ):
+                    category = ttl_stream.numeric_value(
+                        predicates, config.ONET + "category", None
+                    )
+                    record = CategoryRecord(
+                        iri=subject_iri,
+                        category=int(category) if category is not None else None,
+                        description=ttl_stream.literal_value(
+                            predicates, config.ONET + "categoryDescription"
+                        ),
+                    )
+                    parsed.categories[subject_iri] = record
+                elif any(item in profile_types for item in subject_types):
+                    profile_type = next(
+                        item for item in subject_types if item in profile_types
+                    )
+                    refs = ttl_stream.iri_values(
+                        predicates, config.ONET + "refersTo"
+                    )
+                    element_iri = ttl_stream.iri_value(
+                        predicates, config.ONET + "ratedElement"
+                    )
+                    if not element_iri:
+                        element_iri = next(
+                            (item for item in refs if "/Element/" in item), None
+                        )
+                    category_iri = ttl_stream.iri_value(
+                        predicates, config.ONET + "ratingCategory"
+                    )
+                    if not category_iri:
+                        category_iri = next(
+                            (item for item in refs if "Category/" in item), None
+                        )
+                    record = ProfileRatingRecord(
+                        iri=subject_iri,
+                        rating_type=profile_type,
+                        element_iri=element_iri,
+                        scale_iri=ttl_stream.iri_value(
+                            predicates, config.ONET + "ratingScale"
+                        ),
+                        category_iri=category_iri,
+                        value=ttl_stream.numeric_value(
+                            predicates, config.ONET + "dataValue", None
+                        ),
+                        n=ttl_stream.numeric_value(predicates, config.ONET + "n", None),
+                    )
+                    parsed.profile_ratings[subject_iri] = record
+                elif "RelatedOccupationLinkage" in subject_types:
+                    idx = ttl_stream.numeric_value(predicates, config.ONET + "relatedIndex", None)
+                    record = LinkageRecord(
+                        iri=subject_iri,
+                        related_iri=ttl_stream.iri_value(
+                            predicates, config.ONET + "relatedOccupation"
+                        ),
+                        tier=ttl_stream.literal_value(
+                            predicates, config.ONET + "relatednessTier"
+                        ),
+                        idx=int(idx) if idx is not None else None,
+                    )
+                    parsed.linkages[subject_iri] = _merge_record(
+                        parsed.linkages.get(subject_iri), record
+                    )
+                else:
+                    rating_type = next((t for t in subject_types if t in indexed_types), None)
+                    if rating_type or "JobZoneRating" in subject_types:
+                        rated_element = ttl_stream.iri_value(
+                            predicates, config.ONET + "ratedElement"
+                        )
+                        if not rated_element:
+                            # CareerInterestTypesRating uses :refersTo for both
+                            # its Element and Scale rather than :ratedElement.
+                            refers_to = ttl_stream.iri_values(
+                                predicates, config.ONET + "refersTo"
+                            )
+                            for target in refers_to:
+                                if "/element/" in target.lower():
+                                    rated_element = target
+                                    break
+                            if not rated_element and refers_to:
+                                rated_element = next(
+                                    (
+                                        target
+                                        for target in refers_to
+                                        if "/scale/" not in target.lower()
+                                    ),
+                                    refers_to[0],
+                                )
+                        rated_zone = ttl_stream.iri_value(
+                            predicates, config.ONET + "ratedJobZone"
+                        )
+                        value = ttl_stream.numeric_value(
+                            predicates, config.ONET + "dataValue", None
+                        )
+                        scale_iri = ttl_stream.iri_value(
+                            predicates, config.ONET + "ratingScale"
+                        )
+                        if not scale_iri:
+                            for target in ttl_stream.iri_values(
+                                predicates, config.ONET + "refersTo"
+                            ):
+                                if "/scale/" in target.lower():
+                                    scale_iri = target
+                                    break
+                        suppressed_term = ttl_stream.first(
+                            predicates, config.ONET + "recommendSuppress"
+                        )
+                        suppressed = bool(suppressed_term.python_value()) if suppressed_term else False
+                        record = RatingRecord(
+                            iri=subject_iri,
+                            rating_type=rating_type or "JobZoneRating",
+                            value=value,
+                            element_iri=rated_element,
+                            scale_iri=scale_iri,
+                            job_zone_iri=rated_zone,
+                            suppressed=suppressed,
+                        )
+                        parsed.ratings[subject_iri] = _merge_record(
+                            parsed.ratings.get(subject_iri), record
+                        )
         self._log(f"  parsed {count:,} total blocks")
         return parsed
 
@@ -602,6 +902,59 @@ class IndexBuilder:
             rows,
         )
 
+    def _insert_task_details(
+        self, conn: sqlite3.Connection, parsed: ParsedABox
+    ) -> None:
+        for record in parsed.task_ratings.values():
+            if not record.task_iri:
+                continue
+            conn.execute(
+                "INSERT OR REPLACE INTO task_ratings("
+                "task_iri,rating_iri,category_iri,scale_iri,value,n) "
+                "VALUES (?,?,?,?,?,?)",
+                (
+                    record.task_iri,
+                    record.iri,
+                    record.category_iri,
+                    record.scale_iri,
+                    record.value,
+                    record.n,
+                ),
+            )
+        for task in parsed.tasks.values():
+            for linkage_iri in task.dwa_links:
+                linkage = parsed.task_dwas.get(linkage_iri)
+                if linkage and linkage.dwa_element_iri:
+                    conn.execute(
+                        "INSERT OR REPLACE INTO task_dwa(task_iri,dwa_element_iri) "
+                        "VALUES (?,?)",
+                        (task.iri, linkage.dwa_element_iri),
+                    )
+
+    def _insert_profile_ratings(
+        self, conn: sqlite3.Connection, parsed: ParsedABox
+    ) -> None:
+        for occupation in parsed.occupations.values():
+            for rating_iri in occupation.ratings:
+                record = parsed.profile_ratings.get(rating_iri)
+                if not record:
+                    continue
+                conn.execute(
+                    "INSERT OR REPLACE INTO profile_ratings("
+                    "occupation_iri,rating_iri,rating_type,element_iri,scale_iri,"
+                    "category_iri,value,n) VALUES (?,?,?,?,?,?,?,?)",
+                    (
+                        occupation.iri,
+                        record.iri,
+                        record.rating_type,
+                        record.element_iri,
+                        record.scale_iri,
+                        record.category_iri,
+                        record.value,
+                        record.n,
+                    ),
+                )
+
     def _insert_tasks(
         self, conn: sqlite3.Connection, parsed: ParsedABox, ontology: Ontology
     ) -> None:
@@ -613,13 +966,15 @@ class IndexBuilder:
                     continue
                 conn.execute(
                     "INSERT OR REPLACE INTO occupation_tasks("
-                    "occupation_iri,task_iri,task_en,task_id,task_id_text) VALUES (?,?,?,?,?)",
+                    "occupation_iri,task_iri,task_en,task_id,task_id_text,task_type) "
+                    "VALUES (?,?,?,?,?,?)",
                     (
                         occupation.iri,
                         task_iri,
                         task.text_en,
                         task.task_id,
                         labels.get(task_iri, {}).get("id"),
+                        task.task_type,
                     ),
                 )
 
@@ -669,6 +1024,104 @@ class IndexBuilder:
                     "occupation_iri,related_iri,tier,idx) VALUES (?,?,?,?)",
                     (occupation.iri, related_iri, "linkedTo", None),
                 )
+
+    def _insert_scales(self, conn: sqlite3.Connection, parsed: ParsedABox) -> None:
+        for iri, record in parsed.categories.items():
+            conn.execute(
+                "INSERT OR REPLACE INTO categories(iri,category,description) "
+                "VALUES (?,?,?)",
+                (iri, record.category, record.description),
+            )
+        for iri, record in parsed.scales.items():
+            conn.execute(
+                "INSERT OR REPLACE INTO scales(iri,scale_id,name_en,minimum,maximum) "
+                "VALUES (?,?,?,?,?)",
+                (
+                    iri,
+                    record.scale_id,
+                    record.name_en,
+                    record.minimum,
+                    record.maximum,
+                ),
+            )
+
+    def _insert_interest(
+        self, conn: sqlite3.Connection, parsed: ParsedABox, ontology: Ontology
+    ) -> None:
+        """Materialise the O*NET interest vocabulary and its RIASEC links."""
+
+        labels = ontology.labels
+        riasec_names = {
+            "Realistic",
+            "Investigative",
+            "Artistic",
+            "Social",
+            "Enterprising",
+            "Conventional",
+        }
+        # The six RIASEC Element blocks carry linkedTo edges to keywords and
+        # illustratedBy edges to a small set of activities.  The full
+        # activity vocabulary is attached to Specific Interest Areas elements
+        # (for example Mechanics/Electronics), which in turn linkTo the
+        # RIASEC element.  Resolve that one intermediate hop as well.
+        riasec_by_element: Dict[str, tuple[str, str]] = {}
+        for element in parsed.elements.values():
+            name = (element.name_en or "").strip()
+            if name in riasec_names:
+                riasec_by_element[element.iri] = (name, element.iri)
+
+        activity_riasec: Dict[str, tuple[str, str]] = {}
+        keyword_riasec: Dict[str, tuple[str, str]] = {}
+        for element in parsed.elements.values():
+            target = riasec_by_element.get(element.iri)
+            if target is None:
+                for linked_iri in element.linked_to:
+                    target = riasec_by_element.get(linked_iri)
+                    if target is not None:
+                        break
+            if target is None:
+                continue
+            for activity_iri in element.illustrated_by:
+                if (
+                    activity_iri in parsed.interest_activities
+                    or "/interestsactivity/" in activity_iri.lower()
+                ):
+                    activity_riasec.setdefault(activity_iri, target)
+            for keyword_iri in element.linked_to:
+                if (
+                    keyword_iri in parsed.interest_keywords
+                    or "/interestskeyword/" in keyword_iri.lower()
+                ):
+                    keyword_riasec.setdefault(keyword_iri, target)
+
+        for iri, record in parsed.interest_activities.items():
+            riasec = activity_riasec.get(iri)
+            conn.execute(
+                "INSERT OR REPLACE INTO interest_activities("
+                "iri,text_en,text_id,riasec_local,riasec_iri) VALUES (?,?,?,?,?)",
+                (
+                    iri,
+                    record.text_en,
+                    labels.get(iri, {}).get("id"),
+                    riasec[0] if riasec else None,
+                    riasec[1] if riasec else None,
+                ),
+            )
+        for iri, record in parsed.interest_keywords.items():
+            riasec = keyword_riasec.get(iri)
+            conn.execute(
+                "INSERT OR REPLACE INTO interest_keywords("
+                "iri,keyword_en,keyword_id,keyword_type,riasec_local,riasec_iri"
+                ") VALUES (?,?,?,?,?,?)",
+                (
+                    iri,
+                    record.keyword_en,
+                    labels.get(iri, {}).get("id"),
+                    record.keyword_type,
+                    riasec[0] if riasec else None,
+                    riasec[1] if riasec else None,
+                ),
+            )
 
     def _insert_fts(
         self, conn: sqlite3.Connection, parsed: ParsedABox, ontology: Ontology
@@ -752,6 +1205,12 @@ class IndexBuilder:
             "elements": str(len(parsed.elements)),
             "tasks": str(len(parsed.tasks)),
             "job_titles": str(len(parsed.job_titles)),
+            "interest_activities": str(len(parsed.interest_activities)),
+            "interest_keywords": str(len(parsed.interest_keywords)),
+            "scales": str(len(parsed.scales)),
+            "categories": str(len(parsed.categories)),
+            "task_ratings": str(len(parsed.task_ratings)),
+            "profile_ratings": str(len(parsed.profile_ratings)),
             "indexed_rating_types": ",".join(policy.indexed_rating_types),
         }
         conn.executemany(
@@ -793,6 +1252,7 @@ def build_index(
     overlay: str | Path | None = None,
     index: str | Path = config.DEFAULT_INDEX,
     index_policy: str | Path = config.DEFAULT_INDEX_POLICY,
+    extra_sources: Optional[Sequence[str | Path]] = None,
     verbose: bool = True,
 ) -> Path:
     return IndexBuilder(
@@ -801,5 +1261,6 @@ def build_index(
         overlay=overlay,
         index=index,
         index_policy=index_policy,
+        extra_sources=extra_sources,
         verbose=verbose,
     ).build()

@@ -1,0 +1,123 @@
+@prefix : <https://www.onetcenter.org/rdf/schema/onet/> .
+@prefix career: <https://example.org/career#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix swrl: <http://www.w3.org/2003/11/swrl#> .
+@prefix swrlb: <http://www.w3.org/2003/11/swrlb#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# Declared-skill readiness
+# =============================================================================
+# These rules compare the user's declared O*NET element proficiency with the
+# occupation's Level-scale requirement.  They are advisory: education and job
+# zone remain the eligibility gate, while this adds SkillReady/SkillGap flags.
+
+career:skillVarUser a swrl:Variable ;
+    rdfs:label "user" .
+
+career:skillVarProficiency a swrl:Variable ;
+    rdfs:label "element proficiency" .
+
+career:skillVarElement a swrl:Variable ;
+    rdfs:label "O*NET element" .
+
+career:skillVarUserLevel a swrl:Variable ;
+    rdfs:label "user proficiency level" .
+
+career:skillVarOccupation a swrl:Variable ;
+    rdfs:label "occupation" .
+
+career:skillVarRequirement a swrl:Variable ;
+    rdfs:label "skill requirement" .
+
+career:skillVarRequiredLevel a swrl:Variable ;
+    rdfs:label "required skill level" .
+
+career:SkillReadyRule a swrl:Imp ;
+    rdfs:label "Declared skill meets occupation level"@en ;
+    rdfs:comment "A user-declared proficiency meets or exceeds an occupation's Level-scale requirement for the same O*NET element."@en ;
+    swrl:body (
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate career:User ;
+          swrl:argument1 career:skillVarUser ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate career:hasElementProficiency ;
+          swrl:argument1 career:skillVarUser ;
+          swrl:argument2 career:skillVarProficiency ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate career:proficiencyElement ;
+          swrl:argument1 career:skillVarProficiency ;
+          swrl:argument2 career:skillVarElement ]
+        [ a swrl:DatavaluedPropertyAtom ;
+          swrl:propertyPredicate career:proficiencyLevel ;
+          swrl:argument1 career:skillVarProficiency ;
+          swrl:argument2 career:skillVarUserLevel ]
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate :Occupation ;
+          swrl:argument1 career:skillVarOccupation ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate career:hasSkillRequirement ;
+          swrl:argument1 career:skillVarOccupation ;
+          swrl:argument2 career:skillVarRequirement ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate career:skillRequirementElement ;
+          swrl:argument1 career:skillVarRequirement ;
+          swrl:argument2 career:skillVarElement ]
+        [ a swrl:DatavaluedPropertyAtom ;
+          swrl:propertyPredicate career:requiredSkillLevel ;
+          swrl:argument1 career:skillVarRequirement ;
+          swrl:argument2 career:skillVarRequiredLevel ]
+        [ a swrl:BuiltinAtom ;
+          swrl:builtin swrlb:greaterThanOrEqual ;
+          swrl:arguments ( career:skillVarUserLevel career:skillVarRequiredLevel ) ]
+    ) ;
+    swrl:head (
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate career:SkillReady ;
+          swrl:argument1 career:skillVarOccupation ]
+    ) .
+
+career:SkillGapRule a swrl:Imp ;
+    rdfs:label "Declared skill below occupation level"@en ;
+    rdfs:comment "A user-declared proficiency is below an occupation's Level-scale requirement for the same O*NET element."@en ;
+    swrl:body (
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate career:User ;
+          swrl:argument1 career:skillVarUser ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate career:hasElementProficiency ;
+          swrl:argument1 career:skillVarUser ;
+          swrl:argument2 career:skillVarProficiency ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate career:proficiencyElement ;
+          swrl:argument1 career:skillVarProficiency ;
+          swrl:argument2 career:skillVarElement ]
+        [ a swrl:DatavaluedPropertyAtom ;
+          swrl:propertyPredicate career:proficiencyLevel ;
+          swrl:argument1 career:skillVarProficiency ;
+          swrl:argument2 career:skillVarUserLevel ]
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate :Occupation ;
+          swrl:argument1 career:skillVarOccupation ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate career:hasSkillRequirement ;
+          swrl:argument1 career:skillVarOccupation ;
+          swrl:argument2 career:skillVarRequirement ]
+        [ a swrl:IndividualPropertyAtom ;
+          swrl:propertyPredicate career:skillRequirementElement ;
+          swrl:argument1 career:skillVarRequirement ;
+          swrl:argument2 career:skillVarElement ]
+        [ a swrl:DatavaluedPropertyAtom ;
+          swrl:propertyPredicate career:requiredSkillLevel ;
+          swrl:argument1 career:skillVarRequirement ;
+          swrl:argument2 career:skillVarRequiredLevel ]
+        [ a swrl:BuiltinAtom ;
+          swrl:builtin swrlb:lessThan ;
+          swrl:arguments ( career:skillVarUserLevel career:skillVarRequiredLevel ) ]
+    ) ;
+    swrl:head (
+        [ a swrl:ClassAtom ;
+          swrl:classPredicate career:SkillGap ;
+          swrl:argument1 career:skillVarOccupation ]
+    ) .

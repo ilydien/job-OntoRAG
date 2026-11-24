@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getMeta, recommend } from './api.js'
+import { getMeta, getProfile, getRequirements, recommend } from './api.js'
 
 const EXAMPLES = [
   { label: 'Merawat hewan', text: 'Saya suka merawat hewan dan membantu dokter hewan.' },
@@ -58,7 +58,7 @@ function Icon({ name, size = 18 }) {
   )
 }
 
-function ResultCard({ item, index }) {
+function ResultCard({ item, index, onShowRequirements, onShowProfile }) {
   const tone = TONES[index % TONES.length]
   const tier = TIERS[item.tier] || { label: item.tier, tone: 'low' }
   const scores = item.component_scores || {}
@@ -105,14 +105,171 @@ function ResultCard({ item, index }) {
         </ul>
       ) : null}
 
+      {item.skill_gap ? (
+        <span className="skill-flag skill-flag--gap">Ada skill gap</span>
+      ) : item.skill_ready ? (
+        <span className="skill-flag skill-flag--ok">Skill sesuai</span>
+      ) : null}
+
+      <button
+        type="button"
+        className="requirement-link"
+        onClick={() => onShowRequirements(item)}
+      >
+        Lihat kebutuhan
+      </button>
+      <button
+        type="button"
+        className="requirement-link"
+        onClick={() => onShowProfile(item)}
+      >
+        Lihat profil
+      </button>
+
       <span className="rank">#{item.rank}</span>
     </article>
+  )
+}
+
+function RequirementModal({ data, title, loading, error, onClose }) {
+  if (!loading && !data && !error) return null
+  const occupation = data?.occupation
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <section
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="requirement-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <button type="button" className="modal-close" onClick={onClose} aria-label="Tutup">
+          ×
+        </button>
+        <p className="eyebrow">Kebutuhan okupasi</p>
+        <h2 id="requirement-title">{occupation?.title || title}</h2>
+        {occupation?.soc ? <p className="soc">{occupation.soc}</p> : null}
+
+        {loading ? <p className="modal-muted">Memuat requirement…</p> : null}
+        {error ? <div className="banner" role="alert">{error}</div> : null}
+
+        {data ? (
+          <>
+            <div className="requirement-facts">
+              <div>
+                <span className="requirement-label">Pendidikan minimum</span>
+                <strong>{data.education?.label || data.education?.local || '—'}</strong>
+              </div>
+              <div>
+                <span className="requirement-label">Job zone</span>
+                <strong>
+                  {data.job_zone?.value ?? '—'}
+                  {data.job_zone?.name ? ` · ${data.job_zone.name}` : ''}
+                </strong>
+              </div>
+            </div>
+
+            {(data.requirements || []).map((category) => (
+              <section className="requirement-section" key={category.key}>
+                <h3>{category.label}</h3>
+                {category.items?.length ? (
+                  <ul className="requirement-list">
+                    {category.items.map((item) => (
+                      <li key={item.iri}>
+                        <span>{item.label}</span>
+                        <span
+                          className="requirement-score"
+                          title={
+                            item.importance != null
+                              ? `Importance ${Number(item.importance).toFixed(2)}`
+                              : undefined
+                          }
+                        >
+                          {item.level != null
+                            ? `Lv ${Number(item.level).toFixed(2)}`
+                            : Number(item.value || item.normalized || 0).toFixed(2)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="modal-muted">Belum ada data.</p>
+                )}
+              </section>
+            ))}
+          </>
+        ) : null}
+      </section>
+    </div>
+  )
+}
+
+function OccupationProfileModal({ data, title, loading, error, onClose }) {
+  if (!loading && !data && !error) return null
+  const occupation = data?.occupation
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <section
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="occupation-profile-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <button type="button" className="modal-close" onClick={onClose} aria-label="Tutup">
+          ×
+        </button>
+        <p className="eyebrow">Profil pekerjaan</p>
+        <h2 id="occupation-profile-title">{occupation?.title_id || occupation?.title_en || title}</h2>
+        {occupation?.soc ? <p className="soc">{occupation.soc}</p> : null}
+        {loading ? <p className="modal-muted">Memuat profil pekerjaan…</p> : null}
+        {error ? <div className="banner" role="alert">{error}</div> : null}
+        {data ? (
+          <>
+            <section className="requirement-section">
+              <h3>Tugas inti</h3>
+              <ul className="requirement-list">
+                {(data.tasks || []).slice(0, 5).map((task) => (
+                  <li key={task.iri}>
+                    <span>{task.task}</span>
+                    {task.frequency ? (
+                      <span className="requirement-score">{task.frequency}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </section>
+            {(data.context_groups || []).map((group) => (
+              <section className="requirement-section" key={group.key}>
+                <h3>{group.label}</h3>
+                <ul className="requirement-list">
+                  {(group.elements || []).map((element) => {
+                    const top = (element.items || [])[0]
+                    return (
+                      <li key={element.iri}>
+                        <span>{element.label}</span>
+                        {top ? (
+                          <span className="requirement-score">
+                            {top.label || top.value}
+                          </span>
+                        ) : null}
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
+            ))}
+          </>
+        ) : null}
+      </section>
+    </div>
   )
 }
 
 function ProfilePanel({ profile }) {
   const holland = profile ? Object.entries(profile.holland || {}) : []
   const elements = profile ? profile.elements || [] : []
+  const skills = profile ? profile.skills || [] : []
 
   return (
     <section className="panel" aria-live="polite">
@@ -164,6 +321,20 @@ function ProfilePanel({ profile }) {
           ) : (
             <p className="muted">Belum terdeteksi.</p>
           )}
+
+          {skills.length > 0 ? (
+            <>
+              <h3>Skill dinyatakan</h3>
+              <ul className="elements">
+                {skills.map((skill) => (
+                  <li key={skill.label}>
+                    <span>{skill.label}</span>
+                    <b>{Number(skill.level).toFixed(1)}</b>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
         </>
       ) : (
         <p className="muted">
@@ -212,6 +383,14 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
+  const [requirement, setRequirement] = useState(null)
+  const [requirementTitle, setRequirementTitle] = useState('')
+  const [requirementLoading, setRequirementLoading] = useState(false)
+  const [requirementError, setRequirementError] = useState('')
+  const [occupationProfile, setOccupationProfile] = useState(null)
+  const [occupationProfileTitle, setOccupationProfileTitle] = useState('')
+  const [occupationProfileLoading, setOccupationProfileLoading] = useState(false)
+  const [occupationProfileError, setOccupationProfileError] = useState('')
 
   useEffect(() => {
     getMeta().then(setMeta).catch(() => setMeta(null))
@@ -242,6 +421,50 @@ export default function App() {
   function onSubmit(event) {
     event.preventDefault()
     run()
+  }
+
+  async function showRequirements(item) {
+    setRequirement(null)
+    setRequirementTitle(item.title || '')
+    setRequirementError('')
+    setRequirementLoading(true)
+    try {
+      const data = await getRequirements(item.occupation_iri, 'id')
+      setRequirement(data)
+    } catch (err) {
+      setRequirementError(err.message)
+    } finally {
+      setRequirementLoading(false)
+    }
+  }
+
+  function closeRequirements() {
+    setRequirement(null)
+    setRequirementTitle('')
+    setRequirementError('')
+    setRequirementLoading(false)
+  }
+
+  async function showProfile(item) {
+    setOccupationProfile(null)
+    setOccupationProfileTitle(item.title || '')
+    setOccupationProfileError('')
+    setOccupationProfileLoading(true)
+    try {
+      const data = await getProfile(item.occupation_iri, 'id')
+      setOccupationProfile(data)
+    } catch (err) {
+      setOccupationProfileError(err.message)
+    } finally {
+      setOccupationProfileLoading(false)
+    }
+  }
+
+  function closeProfile() {
+    setOccupationProfile(null)
+    setOccupationProfileTitle('')
+    setOccupationProfileError('')
+    setOccupationProfileLoading(false)
   }
 
   const levels = meta?.education_levels || []
@@ -388,7 +611,13 @@ export default function App() {
             {!loading && recommendations.length > 0 ? (
               <div className="cards">
                 {recommendations.map((item, index) => (
-                  <ResultCard key={item.occupation_iri} item={item} index={index} />
+                  <ResultCard
+                    key={item.occupation_iri}
+                    item={item}
+                    index={index}
+                    onShowRequirements={showRequirements}
+                    onShowProfile={showProfile}
+                  />
                 ))}
               </div>
             ) : null}
@@ -402,6 +631,20 @@ export default function App() {
           <HowItWorks />
         </aside>
       </div>
+      <RequirementModal
+        data={requirement}
+        title={requirementTitle}
+        loading={requirementLoading}
+        error={requirementError}
+        onClose={closeRequirements}
+      />
+      <OccupationProfileModal
+        data={occupationProfile}
+        title={occupationProfileTitle}
+        loading={occupationProfileLoading}
+        error={occupationProfileError}
+        onClose={closeProfile}
+      />
     </div>
   )
 }

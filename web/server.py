@@ -14,7 +14,7 @@ import os
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -65,6 +65,7 @@ class RecommendRequest(BaseModel):
     language: str = "id"
     education: Optional[str] = None
     max_job_zone: Optional[int] = Field(default=None, ge=1, le=5)
+    skills: Optional[Dict[str, float]] = None
     top_k: int = Field(default=8, ge=1, le=20)
 
 
@@ -89,6 +90,35 @@ async def meta() -> dict:
     }
 
 
+@app.get("/api/occupation/profile")
+async def occupation_profile(iri: str, language: str = "id") -> dict:
+    pipe: Pipeline = app.state.pipeline
+    payload = pipe.index.occupation_profile(
+        iri,
+        language=language,
+        groups=pipe.policy.profile_groups,
+        core_task_type=pipe.index_policy.core_task_type,
+        relevance_scale_id=pipe.index_policy.task_relevance_scale_id,
+        frequency_scale_id=pipe.index_policy.task_frequency_scale_id,
+    )
+    if payload is None:
+        raise HTTPException(status_code=404, detail="Occupation not found.")
+    return payload
+
+
+@app.get("/api/occupation/requirements")
+async def occupation_requirements(iri: str, language: str = "id") -> dict:
+    pipe: Pipeline = app.state.pipeline
+    payload = pipe.index.requirements_for(
+        iri,
+        pipe.policy.requirement_categories,
+        language=language,
+    )
+    if payload is None:
+        raise HTTPException(status_code=404, detail="Occupation not found.")
+    return payload
+
+
 @app.post("/api/recommend")
 async def recommend(request: RecommendRequest) -> dict:
     pipe: Pipeline = app.state.pipeline
@@ -99,8 +129,11 @@ async def recommend(request: RecommendRequest) -> dict:
             language=request.language,
             education=request.education,
             max_job_zone=request.max_job_zone,
+            skills=request.skills,
         )
         recommendations = pipe.recommend(profile, top_k=request.top_k)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:  # surface engine errors to the UI
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -117,6 +150,11 @@ async def recommend(request: RecommendRequest) -> dict:
     payload["profile"]["elements"] = [
         {"label": labels.get(iri, iri), "weight": round(float(weight), 4)}
         for iri, weight in (profile.elements or {}).items()
+    ]
+    skill_labels = getattr(profile, "skill_labels", {}) or {}
+    payload["profile"]["skills"] = [
+        {"label": skill_labels.get(iri, iri), "level": round(float(level), 2)}
+        for iri, level in (profile.skill_levels or {}).items()
     ]
     payload["meta"] = {
         "retrieval": pipe.retrieval_mode,

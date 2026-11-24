@@ -7,7 +7,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Dict, Optional, Sequence
 
 from . import config
 from .index import build_index
@@ -40,6 +40,16 @@ def _pipeline(args: argparse.Namespace, reasoner_mode: str, retrieval: Optional[
     )
 
 
+def _parse_skills(values: Optional[Sequence[str]]) -> Dict[str, float]:
+    result: Dict[str, float] = {}
+    for raw in values or []:
+        if "=" not in raw:
+            raise ValueError(f"skill must use Name=Level syntax: {raw}")
+        name, level = raw.rsplit("=", 1)
+        result[name.strip()] = float(level)
+    return result
+
+
 def cmd_build_index(args: argparse.Namespace) -> int:
     index_path = Path(args.index)
     if index_path.exists() and not args.rebuild:
@@ -52,6 +62,7 @@ def cmd_build_index(args: argparse.Namespace) -> int:
         overlay=args.overlay,
         index=index_path,
         index_policy=args.index_policy,
+        extra_sources=args.extra_source,
         verbose=not args.quiet,
     )
     if args.with_embeddings:
@@ -137,6 +148,14 @@ def cmd_extract(args: argparse.Namespace) -> int:
                 education=args.education,
                 max_job_zone=args.max_job_zone,
             )
+        skills = _parse_skills(getattr(args, "skill", None))
+        if skills:
+            profile.add_skill_levels(
+                skills,
+                pipeline.catalog,
+                min_level=pipeline.policy.skill_level_min,
+                max_level=pipeline.policy.skill_level_max,
+            )
         if args.format == "ttl":
             print(profile.to_ttl(pipeline.ontology))
         else:
@@ -149,6 +168,11 @@ def cmd_extract(args: argparse.Namespace) -> int:
                 "holland": profile.holland,
                 "elements": profile.element_labels,
                 "element_weights": profile.elements,
+                "skills": {
+                    profile.skill_labels.get(iri, iri): level
+                    for iri, level in profile.skill_levels.items()
+                },
+                "skill_levels": profile.skill_levels,
                 "evidence": profile.evidence,
             }
             print(json.dumps(payload, ensure_ascii=False, indent=2))
@@ -175,6 +199,14 @@ def cmd_recommend(args: argparse.Namespace) -> int:
                 user_iri=args.user_iri,
                 education=args.education,
                 max_job_zone=args.max_job_zone,
+            )
+        skills = _parse_skills(getattr(args, "skill", None))
+        if skills:
+            profile.add_skill_levels(
+                skills,
+                pipeline.catalog,
+                min_level=pipeline.policy.skill_level_min,
+                max_level=pipeline.policy.skill_level_max,
             )
         recommendations = pipeline.recommend(profile, top_k=args.top_k)
         output_language = args.language or profile.language or pipeline.policy.language_default
@@ -228,6 +260,82 @@ def cmd_recommend(args: argparse.Namespace) -> int:
         print(f"Wrote {args.out}", file=sys.stderr)
     else:
         print(text)
+    return 0
+
+
+def cmd_profile(args: argparse.Namespace) -> int:
+    from .policy import load_index_policy, load_ranking_policy
+    from .query_engine import Index
+
+    policy = load_ranking_policy(args.policy)
+    index_policy = load_index_policy(args.index_policy)
+    with Index(args.index) as index:
+        payload = index.occupation_profile(
+            args.occupation,
+            language=args.language or "id",
+            groups=policy.profile_groups,
+            core_task_type=index_policy.core_task_type,
+            relevance_scale_id=index_policy.task_relevance_scale_id,
+            frequency_scale_id=index_policy.task_frequency_scale_id,
+        )
+    if payload is None:
+        print(f"unknown occupation: {args.occupation}", file=sys.stderr)
+        return 2
+    if args.format == "json":
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
+    occupation = payload["occupation"]
+    print(f"{occupation.get('title_id') or occupation.get('title_en')} [{occupation.get('soc') or '-'}]")
+    tasks = payload.get("tasks") or []
+    print("\nTugas inti:")
+    for task in tasks[:10]:
+        suffix = f" ({task['frequency']}, {task['frequency_percent']:.1f}%)" if task.get("frequency") and task.get("frequency_percent") is not None else ""
+        print(f"- {task['task']}{suffix}")
+    for section in payload.get("profile_sections") or []:
+        print(f"\n{section['key']}:")
+        for element in section.get("elements") or []:
+            print(f"- {element.get('label')}")
+            for item in (element.get("items") or [])[:5]:
+                print(f"  - {item.get('label') or item.get('category')}: {item.get('value')}")
+    return 0
+
+
+def cmd_requirements(args: argparse.Namespace) -> int:
+    from .policy import load_ranking_policy
+    from .query_engine import Index
+
+    policy = load_ranking_policy(args.policy)
+    with Index(args.index) as index:
+        payload = index.requirements_for(
+            args.occupation,
+            policy.requirement_categories,
+            language=args.language or policy.language_default,
+        )
+    if payload is None:
+        print(f"unknown occupation: {args.occupation}", file=sys.stderr)
+        return 2
+    if args.format == "json":
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
+    occupation = payload["occupation"]
+    education = payload["education"]
+    zone = payload["job_zone"]
+    print(f"{occupation.get('title') or occupation.get('title_en')} [{occupation.get('soc') or '-'}]")
+    print(f"Pendidikan minimum: {education.get('label') or education.get('local') or '-'}")
+    zone_name = zone.get("name")
+    print(f"Job zone: {zone.get('value') if zone.get('value') is not None else '-'}" + (f" ({zone_name})" if zone_name else ""))
+    for category in payload["requirements"]:
+        if not category["items"]:
+            continue
+        print(f"\n{category['label']}:")
+        for item in category["items"]:
+            scale_bits = []
+            if item.get("level") is not None:
+                scale_bits.append(f"level {float(item['level']):.2f}")
+            if item.get("importance") is not None:
+                scale_bits.append(f"importance {float(item['importance']):.2f}")
+            detail = ", ".join(scale_bits) or f"score {float(item['normalized'] or 0):.3f}"
+            print(f"- {item['label']} ({detail})")
     return 0
 
 
@@ -340,6 +448,12 @@ def build_parser() -> argparse.ArgumentParser:
     build.add_argument("--index", default=str(config.DEFAULT_INDEX), help="output SQLite index")
     build.add_argument("--index-policy", default=str(config.DEFAULT_INDEX_POLICY), help="index policy TTL")
     build.add_argument("--rebuild", action="store_true", help="replace an existing index")
+    build.add_argument(
+        "--extra-source",
+        action="append",
+        default=None,
+        help="additional Turtle source for profile ratings (repeatable)",
+    )
     build.add_argument("--quiet", action="store_true", help="suppress progress output")
     build.add_argument(
         "--with-embeddings",
@@ -385,6 +499,7 @@ def build_parser() -> argparse.ArgumentParser:
     extract.add_argument("--max-job-zone", type=int, default=None, help="maximum job zone (1-5)")
     extract.add_argument("--language", choices=["id", "en"], default=None)
     extract.add_argument("--user-iri", default=None)
+    extract.add_argument("--skill", action="append", default=None, help="declared skill as Name=Level")
     extract.add_argument("--format", choices=["json", "ttl"], default="json")
     _add_common_data_args(extract)
     extract.set_defaults(func=cmd_extract)
@@ -422,9 +537,33 @@ def build_parser() -> argparse.ArgumentParser:
         help="Java executable or JAVA_HOME for Pellet (default: auto-detect)",
     )
     recommend.add_argument("--user-iri", default=None)
+    recommend.add_argument("--skill", action="append", default=None, help="declared skill as Name=Level")
     recommend.add_argument("--out", default=None, help="write output to a file")
     _add_common_data_args(recommend)
     recommend.set_defaults(func=cmd_recommend)
+
+    profile = sub.add_parser(
+        "profile",
+        help="show tasks, qualifications, and work context for one occupation",
+    )
+    profile.add_argument("--occupation", required=True, help="occupation IRI")
+    profile.add_argument("--index", default=str(config.DEFAULT_INDEX), help="SQLite index path")
+    profile.add_argument("--policy", default=str(config.DEFAULT_POLICY), help="ranking policy TTL")
+    profile.add_argument("--index-policy", default=str(config.DEFAULT_INDEX_POLICY), help="index policy TTL")
+    profile.add_argument("--language", choices=["id", "en"], default=None)
+    profile.add_argument("--format", choices=["table", "json"], default="table")
+    profile.set_defaults(func=cmd_profile)
+
+    requirements = sub.add_parser(
+        "requirements",
+        help="show education, job zone, and top O*NET requirements for one occupation",
+    )
+    requirements.add_argument("--occupation", required=True, help="occupation IRI")
+    requirements.add_argument("--index", default=str(config.DEFAULT_INDEX), help="SQLite index path")
+    requirements.add_argument("--policy", default=str(config.DEFAULT_POLICY), help="ranking policy TTL")
+    requirements.add_argument("--language", choices=["id", "en"], default=None)
+    requirements.add_argument("--format", choices=["table", "json"], default="table")
+    requirements.set_defaults(func=cmd_requirements)
 
     benchmark = sub.add_parser(
         "benchmark",

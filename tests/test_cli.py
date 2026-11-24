@@ -56,6 +56,70 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["education_level"], "S1")
         self.assertTrue(payload["elements"])
 
+    def test_requirements_json(self) -> None:
+        code, out, err = self.run_cli(
+            "requirements",
+            "--index",
+            str(self.index_path),
+            "--occupation",
+            "https://example.org/occupation/data-scientist",
+            "--format",
+            "json",
+        )
+        self.assertEqual(code, 0, err)
+        payload = json.loads(out)
+        self.assertEqual(payload["occupation"]["title"], "Data Scientist")
+        self.assertEqual(payload["education"]["local"], "S1")
+        self.assertEqual(payload["job_zone"]["value"], 4)
+        knowledge = next(
+            item
+            for item in payload["requirements"]
+            if item["rating_type"] == "KnowledgeRating"
+        )
+        self.assertEqual(knowledge["items"][0]["label"], "Programming")
+
+    def test_requirements_unknown_occupation(self) -> None:
+        code, _out, err = self.run_cli(
+            "requirements",
+            "--index",
+            str(self.index_path),
+            "--occupation",
+            "urn:missing",
+        )
+        self.assertEqual(code, 2)
+        self.assertIn("unknown occupation", err)
+
+    def test_extract_declared_skill(self) -> None:
+        code, out, err = self.run_cli(
+            "extract",
+            "--index",
+            str(self.index_path),
+            "--overlay",
+            str(self.overlay),
+            "--text",
+            "Saya suka data.",
+            "--skill",
+            "Programming=4",
+        )
+        self.assertEqual(code, 0, err)
+        payload = json.loads(out)
+        self.assertEqual(payload["skill_levels"], {"https://example.org/element/programming": 4.0})
+
+    def test_profile_json(self) -> None:
+        code, out, err = self.run_cli(
+            "profile",
+            "--index",
+            str(self.index_path),
+            "--occupation",
+            "https://example.org/occupation/data-scientist",
+            "--format",
+            "json",
+        )
+        self.assertEqual(code, 0, err)
+        payload = json.loads(out)
+        self.assertEqual(payload["occupation"]["title_en"], "Data Scientist")
+        self.assertEqual(payload["tasks"][0]["task"], "Build data models")
+
     def test_recommend_json(self) -> None:
         code, out, err = self.run_cli(
             "recommend",

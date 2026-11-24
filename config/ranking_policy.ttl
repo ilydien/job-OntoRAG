@@ -40,6 +40,12 @@ career:DefaultRankingPolicy a career:RankingPolicy ;
     career:taskEvidenceLimit 3 ;
     career:jobTitleEvidenceLimit 3 ;
     career:descriptionPreviewChars 400 ;
+    career:interestPrimary true ;
+    career:skillLevelMin 0 ;
+    career:skillLevelMax 7 ;
+    career:skillRequirementScaleId "LV" ;
+    career:interestActivityWeight "0.75"^^xsd:decimal ;
+    career:interestKeywordWeight "0.65"^^xsd:decimal ;
     career:directElementWeight "0.35"^^xsd:decimal ;
     career:directElementMinLength 4 ;
     career:reasonerDefault "auto" ;
@@ -48,12 +54,23 @@ career:DefaultRankingPolicy a career:RankingPolicy ;
     career:hasReasoningMap "config/reasoning_map.ttl" ;
     career:hasRuleFile "rules/eligibility.swrl.ttl" ;
     career:hasRuleFile "rules/match_flags.swrl.ttl" ;
+    career:hasRuleFile "rules/skill_readiness.swrl.ttl" ;
     career:hasRuleFile "rules/tier.swrl.ttl" ;
     career:hasComponent career:HollandComponent ;
     career:hasComponent career:ElementComponent ;
     career:hasComponent career:OntologyComponent ;
     career:hasComponent career:SemanticComponent ;
-    career:hasComponent career:LexicalComponent .
+    career:hasComponent career:LexicalComponent ;
+    career:hasProfileGroup
+        career:IndoorOutdoorGroup ,
+        career:PhysicalDemandGroup ,
+        career:TeamworkGroup ;
+    career:hasRequirementCategory
+        career:RequirementEssentialSkills ,
+        career:RequirementTransferableSkills ,
+        career:RequirementKnowledge ,
+        career:RequirementAbilities ,
+        career:RequirementWorkActivities .
 
 career:HollandComponent a career:ScoringComponent ;
     rdfs:label "Holland/RIASEC alignment"@en ;
@@ -84,3 +101,71 @@ career:LexicalComponent a career:ScoringComponent ;
     career:componentOrder 40 ;
     career:componentType "lexical" ;
     career:componentWeight "0.15"^^xsd:decimal .
+
+career:RequirementEssentialSkills a career:RequirementCategory ;
+    rdfs:label "Keterampilan penting"@id ;
+    rdfs:label "Essential skills"@en ;
+    career:requirementRatingType "EssentialSkillsRating" ;
+    career:requirementCategoryOrder 10 ;
+    career:requirementCategoryLimit 6 .
+
+career:RequirementTransferableSkills a career:RequirementCategory ;
+    rdfs:label "Keterampilan umum"@id ;
+    rdfs:label "Transferable skills"@en ;
+    career:requirementRatingType "TransferableSkillsRating" ;
+    career:requirementCategoryOrder 20 ;
+    career:requirementCategoryLimit 6 .
+
+career:RequirementKnowledge a career:RequirementCategory ;
+    rdfs:label "Pengetahuan"@id ;
+    rdfs:label "Knowledge"@en ;
+    career:requirementRatingType "KnowledgeRating" ;
+    career:requirementCategoryOrder 30 ;
+    career:requirementCategoryLimit 6 .
+
+career:RequirementAbilities a career:RequirementCategory ;
+    rdfs:label "Kemampuan"@id ;
+    rdfs:label "Abilities"@en ;
+    career:requirementRatingType "AbilitiesRating" ;
+    career:requirementCategoryOrder 40 ;
+    career:requirementCategoryLimit 6 .
+
+career:RequirementWorkActivities a career:RequirementCategory ;
+    rdfs:label "Aktivitas kerja"@id ;
+    rdfs:label "Work activities"@en ;
+    career:requirementRatingType "WorkActivitiesRating" ;
+    career:requirementCategoryOrder 50 ;
+    career:requirementCategoryLimit 6 .
+
+career:IndoorOutdoorGroup a career:ProfileGroup ;
+    rdfs:label "Indoor/outdoor context"@en ;
+    rdfs:label "Konteks dalam/luar ruangan"@id ;
+    career:profileGroupOrder 10 ;
+    career:profileGroupElement
+        <https://www.onetcenter.org/rdf/resources/onet/Element/589b8d07-1b12-11ea-8239-782bcb5df6ac> ,
+        <https://www.onetcenter.org/rdf/resources/onet/Element/58a3c565-1b12-11ea-8239-782bcb5df6ac> ,
+        <https://www.onetcenter.org/rdf/resources/onet/Element/58a925e0-1b12-11ea-8239-782bcb5df6ac> ,
+        <https://www.onetcenter.org/rdf/resources/onet/Element/58ae9132-1b12-11ea-8239-782bcb5df6ac> .
+
+career:PhysicalDemandGroup a career:ProfileGroup ;
+    rdfs:label "Physical demand"@en ;
+    rdfs:label "Tuntutan fisik"@id ;
+    career:profileGroupOrder 20 ;
+    career:profileGroupElement
+        <https://www.onetcenter.org/rdf/resources/onet/Element/59160278-1b12-11ea-8239-782bcb5df6ac> ,
+        <https://www.onetcenter.org/rdf/resources/onet/Element/591f4630-1b12-11ea-8239-782bcb5df6ac> ,
+        <https://www.onetcenter.org/rdf/resources/onet/Element/592a1ae0-1b12-11ea-8239-782bcb5df6ac> ,
+        <https://www.onetcenter.org/rdf/resources/onet/Element/59249d6a-1b12-11ea-8239-782bcb5df6ac> ,
+        <https://www.onetcenter.org/rdf/resources/onet/Element/592f980f-1b12-11ea-8239-782bcb5df6ac> ,
+        <https://www.onetcenter.org/rdf/resources/onet/Element/5940051e-1b12-11ea-8239-782bcb5df6ac> ,
+        <https://www.onetcenter.org/rdf/resources/onet/Element/59457727-1b12-11ea-8239-782bcb5df6ac> ,
+        <https://www.onetcenter.org/rdf/resources/onet/Element/593a8388-1b12-11ea-8239-782bcb5df6ac> .
+
+career:TeamworkGroup a career:ProfileGroup ;
+    rdfs:label "Teamwork and contact"@en ;
+    rdfs:label "Kerja tim dan kontak"@id ;
+    career:profileGroupOrder 30 ;
+    career:profileGroupElement
+        <https://www.onetcenter.org/rdf/resources/onet/Element/5860b234-1b12-11ea-8239-782bcb5df6ac> ,
+        <https://www.onetcenter.org/rdf/resources/onet/Element/58583552-1b12-11ea-8239-782bcb5df6ac> ,
+        <https://www.onetcenter.org/rdf/resources/onet/Element/5852c332-1b12-11ea-8239-782bcb5df6ac> .

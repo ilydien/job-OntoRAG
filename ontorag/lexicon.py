@@ -116,6 +116,25 @@ class Lexicon:
             raise ValueError(f"lexicon {path} defines no positive lex:negationWindow")
         return cls(entries, negation_window)
 
+    def negation_spans(self, text: str) -> List[tuple[int, int]]:
+        """Return spans for declared negation markers in ``text``.
+
+        This is used by non-lexicon extractors (notably the O*NET interest
+        catalogue) so they observe the same negation window as lexicon cues.
+        """
+
+        spans: List[tuple[int, int]] = []
+        for entry in self.entries:
+            if entry.target_kind != "negation":
+                continue
+            for keyword in entry.keywords:
+                regex = self._keyword_res[(entry.iri, keyword)]
+                spans.extend((match.start(), match.end()) for match in regex.finditer(text))
+            for pattern in entry.patterns:
+                regex = self._pattern_res[(entry.iri, pattern)]
+                spans.extend((match.start(), match.end()) for match in regex.finditer(text))
+        return spans
+
     def find(self, text: str) -> List[LexicalMatch]:
         """Return all lexicon matches, including negation markers."""
 

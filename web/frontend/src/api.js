@@ -14,3 +14,18 @@ export async function recommend(body) {
   if (!response.ok) throw new Error(data.detail || 'Permintaan gagal.')
   return data
 }
+export async function getRequirements(iri, language = 'id') {
+  const params = new URLSearchParams({ iri, language })
+  const response = await fetch(`/api/occupation/requirements?${params}`)
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(data.detail || 'Gagal memuat requirement.')
+  return data
+}
+
+export async function getProfile(iri, language = 'id') {
+  const params = new URLSearchParams({ iri, language })
+  const response = await fetch(`/api/occupation/profile?${params}`)
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(data.detail || 'Gagal memuat profil pekerjaan.')
+  return data
+}

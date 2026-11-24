@@ -26,8 +26,16 @@ class PolicyTests(unittest.TestCase):
         # The candidate limit is a safety cap: retrieval must rank the whole
         # hard-filtered pool, so this stays well above the O*NET occupation count.
         self.assertGreaterEqual(policy.candidate_limit, 1000)
-        self.assertEqual(len(policy.rule_files), 3)
+        self.assertEqual(len(policy.rule_files), 4)
         self.assertTrue(policy.reasoning_map_file.exists())
+        self.assertEqual(len(policy.requirement_categories), 5)
+        self.assertEqual(
+            policy.requirement_categories[0].rating_type, "EssentialSkillsRating"
+        )
+        self.assertGreater(policy.requirement_categories[0].limit, 0)
+        self.assertEqual(policy.skill_level_min, 0.0)
+        self.assertEqual(policy.skill_level_max, 7.0)
+        self.assertEqual(policy.skill_requirement_scale_id, "LV")
 
     def test_index_policy(self) -> None:
         policy = load_index_policy()

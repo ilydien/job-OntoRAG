@@ -21,6 +21,108 @@ career:ScoringComponent a owl:Class ;
     rdfs:label "Scoring component"@en ;
     rdfs:comment "A named, weighted component of the final recommendation score."@en .
 
+career:ElementProficiency a owl:Class ;
+    rdfs:label "Element proficiency"@en ;
+    rdfs:comment "A declared user proficiency level for one O*NET element."@en .
+
+career:SkillRequirement a owl:Class ;
+    rdfs:label "Skill requirement"@en ;
+    rdfs:comment "An occupation-specific O*NET level requirement used by SWRL."@en .
+
+career:SkillReady a owl:Class ;
+    rdfs:label "Skill ready"@en .
+
+career:SkillGap a owl:Class ;
+    rdfs:label "Skill gap"@en .
+
+career:hasElementProficiency a owl:ObjectProperty ;
+    rdfs:domain career:User ;
+    rdfs:range career:ElementProficiency ;
+    rdfs:label "has element proficiency"@en .
+
+career:proficiencyElement a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain career:ElementProficiency ;
+    rdfs:range :Element ;
+    rdfs:label "proficiency element"@en .
+
+career:proficiencyLevel a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:ElementProficiency ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "proficiency level"@en .
+
+career:hasSkillRequirement a owl:ObjectProperty ;
+    rdfs:domain :Occupation ;
+    rdfs:range career:SkillRequirement ;
+    rdfs:label "has skill requirement"@en .
+
+career:skillRequirementElement a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain career:SkillRequirement ;
+    rdfs:range :Element ;
+    rdfs:label "skill requirement element"@en .
+
+career:requiredSkillLevel a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:SkillRequirement ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "required skill level"@en .
+
+career:ProfileGroup a owl:Class ;
+    rdfs:label "Occupation profile group"@en ;
+    rdfs:comment "A display grouping of O*NET work-context elements."@en .
+
+career:hasProfileGroup a owl:ObjectProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range career:ProfileGroup ;
+    rdfs:label "has occupation profile group"@en .
+
+career:profileGroupOrder a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:ProfileGroup ;
+    rdfs:range xsd:integer ;
+    rdfs:label "profile group order"@en .
+
+career:profileGroupElement a owl:ObjectProperty ;
+    rdfs:domain career:ProfileGroup ;
+    rdfs:range :Element ;
+    rdfs:label "profile group element"@en .
+
+career:RequirementCategory a owl:Class ;
+    rdfs:label "Occupation requirement category"@en ;
+    rdfs:comment "A display category for O*NET ratings shown in occupation requirement lookup."@en .
+
+career:hasRequirementCategory a owl:ObjectProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range career:RequirementCategory ;
+    rdfs:label "has occupation requirement category"@en .
+
+career:requirementRatingType a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RequirementCategory ;
+    rdfs:range xsd:string ;
+    rdfs:label "requirement O*NET rating type"@en .
+
+career:requirementCategoryOrder a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RequirementCategory ;
+    rdfs:range xsd:integer ;
+    rdfs:label "requirement category order"@en .
+
+career:requirementCategoryLimit a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RequirementCategory ;
+    rdfs:range xsd:integer ;
+    rdfs:label "requirement category item limit"@en .
+
+career:skillLevelMin a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "minimum accepted skill level"@en .
+
+career:skillLevelMax a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "maximum accepted skill level"@en .
+
+career:skillRequirementScaleId a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:string ;
+    rdfs:label "O*NET scale id used for skill requirements"@en .
+
 career:IndexPolicy a owl:Class ;
     rdfs:label "Index policy"@en ;
     rdfs:comment "Policy describing which ABox facts are materialised into the retrieval index."@en .
@@ -187,6 +289,21 @@ career:descriptionPreviewChars a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:domain career:RankingPolicy ;
     rdfs:range xsd:integer ;
     rdfs:label "occupation-description preview length"@en .
+
+career:interestPrimary a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "prefer grounded O*NET interest cues over lexicon Holland cues"@en .
+
+career:interestActivityWeight a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "interest activity cue weight"@en .
+
+career:interestKeywordWeight a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain career:RankingPolicy ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "interest keyword cue weight"@en .
 
 career:directElementWeight a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:domain career:RankingPolicy ;

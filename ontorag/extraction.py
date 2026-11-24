@@ -30,6 +30,94 @@ class ElementInfo:
         return self.name_en
 
 
+@dataclass(frozen=True)
+class InterestInfo:
+    iri: str
+    label_en: str
+    label_id: Optional[str]
+    kind: str
+    riasec_local: Optional[str]
+    riasec_iri: Optional[str]
+
+    @property
+    def display(self) -> str:
+        return self.label_en
+
+
+class InterestCatalog:
+    """Interest activity/keyword lookup derived from the generated index."""
+
+    def __init__(self, items: Iterable[InterestInfo]) -> None:
+        self.by_iri: Dict[str, InterestInfo] = {}
+        self.by_label: Dict[str, InterestInfo] = {}
+        for item in items:
+            self.by_iri[item.iri] = item
+            if item.label_en:
+                self.by_label.setdefault(item.label_en.lower(), item)
+            if item.label_id:
+                self.by_label.setdefault(item.label_id.lower(), item)
+        self._names = sorted(
+            ((label, item) for label, item in self.by_label.items()),
+            key=lambda pair: len(pair[0]),
+            reverse=True,
+        )
+
+    @classmethod
+    def from_rows(cls, rows: Iterable[Mapping[str, object]]) -> "InterestCatalog":
+        items: List[InterestInfo] = []
+        for row in rows:
+            iri = str(row.get("iri") or "")
+            label_en = str(row.get("label_en") or "")
+            label_id = str(row["label_id"]) if row.get("label_id") is not None else None
+            kind = str(row.get("kind") or "")
+            riasec_local = (
+                str(row["riasec_local"]) if row.get("riasec_local") is not None else None
+            )
+            riasec_iri = (
+                str(row["riasec_iri"]) if row.get("riasec_iri") is not None else None
+            )
+            if iri and label_en:
+                items.append(
+                    InterestInfo(
+                        iri=iri,
+                        label_en=label_en,
+                        label_id=label_id,
+                        kind=kind,
+                        riasec_local=riasec_local,
+                        riasec_iri=riasec_iri,
+                    )
+                )
+        return cls(items)
+
+    def direct_matches(
+        self,
+        text: str,
+        min_length: int,
+        activity_weight: float,
+        keyword_weight: float,
+    ) -> List[Tuple[InterestInfo, str, int, int, float]]:
+        if not text:
+            return []
+        found: List[Tuple[InterestInfo, str, int, int, float]] = []
+        occupied: List[Tuple[int, int]] = []
+        for label, item in self._names:
+            # O*NET activity labels are full sentences and usually end with a
+            # period.  Match the phrase without requiring the user to reproduce
+            # that trailing punctuation.
+            term = label.rstrip(" .!?,;:")
+            if len(term) < min_length:
+                continue
+            pattern = re.compile(r"(?<!\w)" + re.escape(term) + r"(?!\w)", re.IGNORECASE)
+            for match in pattern.finditer(text):
+                start, end = match.start(), match.end()
+                if any(not (end <= a or start >= b) for a, b in occupied):
+                    continue
+                occupied.append((start, end))
+                weight = keyword_weight if item.kind == "keyword" else activity_weight
+                found.append((item, match.group(0), start, end, weight))
+        return sorted(found, key=lambda item: (item[2], item[3]))
+
+
 class ElementCatalog:
     """Element label lookup derived from the generated index."""
 
@@ -103,9 +191,13 @@ class ElementCatalog:
         found: List[Tuple[ElementInfo, str, int, int, float]] = []
         occupied: List[Tuple[int, int]] = []
         for label, item in self._names:
-            if len(label) < min_length:
+            # O*NET activity labels are full sentences and usually end with a
+            # period.  Match the phrase without requiring the user to reproduce
+            # that trailing punctuation.
+            term = label.rstrip(" .!?,;:")
+            if len(term) < min_length:
                 continue
-            pattern = re.compile(r"(?<!\w)" + re.escape(label) + r"(?!\w)", re.IGNORECASE)
+            pattern = re.compile(r"(?<!\w)" + re.escape(term) + r"(?!\w)", re.IGNORECASE)
             for match in pattern.finditer(text):
                 start, end = match.start(), match.end()
                 if any(not (end <= a or start >= b) for a, b in occupied):
@@ -125,6 +217,8 @@ class Profile:
     holland: Dict[str, float] = field(default_factory=dict)
     elements: Dict[str, float] = field(default_factory=dict)
     element_labels: Dict[str, str] = field(default_factory=dict)
+    skill_levels: Dict[str, float] = field(default_factory=dict)
+    skill_labels: Dict[str, str] = field(default_factory=dict)
     raw_text: str = ""
     lexical_text: str = ""
     evidence: List[dict] = field(default_factory=list)
@@ -145,6 +239,8 @@ class Profile:
             holland=dict(self.holland),
             elements=dict(self.elements),
             element_labels=dict(self.element_labels),
+            skill_levels=dict(self.skill_levels),
+            skill_labels=dict(self.skill_labels),
             raw_text="\n".join(part for part in (self.raw_text, other.raw_text) if part),
             lexical_text="\n".join(
                 part for part in (self.lexical_text, other.lexical_text) if part
@@ -158,6 +254,10 @@ class Profile:
             result.elements[iri] = max(result.elements.get(iri, 0.0), weight)
         for iri, label in other.element_labels.items():
             result.element_labels.setdefault(iri, label)
+        for iri, level in other.skill_levels.items():
+            result.skill_levels[iri] = max(result.skill_levels.get(iri, 0.0), level)
+        for iri, label in other.skill_labels.items():
+            result.skill_labels.setdefault(iri, label)
         if other.education_order is not None:
             if result.education_order is None or other.education_order > result.education_order:
                 result.education_local = other.education_local
@@ -215,6 +315,21 @@ class Profile:
                     f"<{user}> career:hasElementPreference {pref} .",
                 ]
             )
+
+        for iri, level in sorted(self.skill_levels.items()):
+            proficiency = (
+                f"career:{sanitize_local(user_local)}_skill_"
+                f"{sanitize_local(local_name(iri) or hashlib.sha1(iri.encode()).hexdigest()[:8])}"
+            )
+            lines.extend(
+                [
+                    "",
+                    f"{proficiency} a career:ElementProficiency ;",
+                    f"    career:proficiencyElement <{iri}> ;",
+                    f"    career:proficiencyLevel \"{float(level):.6f}\"^^xsd:decimal .",
+                    f"<{user}> career:hasElementProficiency {proficiency} .",
+                ]
+            )
         return "\n".join(lines) + "\n"
 
     @classmethod
@@ -224,6 +339,8 @@ class Profile:
         ontology: Ontology,
         catalog: ElementCatalog,
         language: Optional[str] = None,
+        skill_level_min: float = 0.0,
+        skill_level_max: float = 7.0,
     ) -> "Profile":
         user_iri = normalize_iri(str(data.get("user_iri") or "user_profile"))
         language = language or str(data.get("language") or "id")
@@ -259,6 +376,21 @@ class Profile:
             elements[item.iri] = max(elements.get(item.iri, 0.0), weight)
             element_labels[item.iri] = item.display
 
+        skill_levels: Dict[str, float] = {}
+        skill_labels: Dict[str, str] = {}
+        for key, value in (data.get("skills") or data.get("skill_levels") or {}).items():
+            item = catalog.resolve(str(key))
+            if not item:
+                raise ValueError(f"unknown O*NET element: {key}")
+            level = float(value)
+            if not skill_level_min <= level <= skill_level_max:
+                raise ValueError(
+                    f"skill level out of range for {key}: "
+                    f"{skill_level_min}..{skill_level_max}"
+                )
+            skill_levels[item.iri] = max(skill_levels.get(item.iri, 0.0), level)
+            skill_labels[item.iri] = item.display
+
         return cls(
             user_iri=user_iri,
             language=language,
@@ -268,11 +400,43 @@ class Profile:
             holland=holland,
             elements=elements,
             element_labels=element_labels,
+            skill_levels=skill_levels,
+            skill_labels=skill_labels,
             raw_text=str(data.get("text") or ""),
             lexical_text=str(data.get("text") or ""),
             evidence=[],
             notes=str(data.get("notes") or ""),
         )
+
+    def add_skill_levels(
+        self,
+        values: Mapping[str, object],
+        catalog: ElementCatalog,
+        min_level: float = 0.0,
+        max_level: float = 7.0,
+    ) -> None:
+        for key, value in values.items():
+            item = catalog.resolve(str(key))
+            if not item:
+                raise ValueError(f"unknown O*NET element: {key}")
+            level = float(value)
+            if not min_level <= level <= max_level:
+                raise ValueError(
+                    f"skill level out of range for {key}: {min_level}..{max_level}"
+                )
+            self.skill_levels[item.iri] = max(
+                self.skill_levels.get(item.iri, 0.0), level
+            )
+            self.skill_labels[item.iri] = item.display
+            self.evidence.append(
+                {
+                    "kind": "skill_level",
+                    "text": str(key),
+                    "target": item.display,
+                    "value": level,
+                    "source": "profile",
+                }
+            )
 
     @classmethod
     def load(
@@ -281,12 +445,21 @@ class Profile:
         ontology: Ontology,
         catalog: ElementCatalog,
         language: Optional[str] = None,
+        skill_level_min: float = 0.0,
+        skill_level_max: float = 7.0,
     ) -> "Profile":
         with open(path, "r", encoding="utf-8") as fh:
             data = json.load(fh)
         if not isinstance(data, dict):
             raise ValueError("profile JSON must be an object")
-        return cls.from_json(data, ontology, catalog, language=language)
+        return cls.from_json(
+            data,
+            ontology,
+            catalog,
+            language=language,
+            skill_level_min=skill_level_min,
+            skill_level_max=skill_level_max,
+        )
 
 
 def normalize_iri(value: str) -> str:
@@ -332,6 +505,10 @@ def extract_from_text(
     default_max_job_zone: Optional[int] = None,
     direct_element_weight: Optional[float] = None,
     direct_element_min_length: Optional[int] = None,
+    interest_catalog: Optional[InterestCatalog] = None,
+    interest_activity_weight: Optional[float] = None,
+    interest_keyword_weight: Optional[float] = None,
+    interest_primary: Optional[bool] = None,
 ) -> Profile:
     """Extract a profile from free text using the declarative lexicon."""
 
@@ -339,7 +516,41 @@ def extract_from_text(
         raise ValueError(
             "direct_element_weight and direct_element_min_length must come from policy"
         )
+    if interest_catalog is not None and (
+        interest_activity_weight is None
+        or interest_keyword_weight is None
+        or interest_primary is None
+    ):
+        raise ValueError(
+            "interest_primary, interest_activity_weight, and "
+            "interest_keyword_weight must come from policy"
+        )
     matches = lexicon.find(text)
+
+    # Resolve grounded interest cues first.  When the policy makes interest the
+    # primary source, oral/lexicon Holland cues are used only if no O*NET
+    # activity or keyword matched at all.  Non-interest lexicon cues (education,
+    # job zone, elements, negation) remain active in both modes.
+    interest_hits: List[Tuple[InterestInfo, str, int, int, float, HollandCode]] = []
+    negation_spans = lexicon.negation_spans(text) if interest_catalog else []
+    if interest_catalog is not None:
+        for item, matched_text, start, end, weight in interest_catalog.direct_matches(
+            text,
+            min_length=direct_element_min_length,
+            activity_weight=interest_activity_weight,
+            keyword_weight=interest_keyword_weight,
+        ):
+            if not item.riasec_local:
+                continue
+            if any(
+                0 <= start - negated_end <= lexicon.negation_window
+                for _, negated_end in negation_spans
+            ):
+                continue
+            code = ontology.holland_code(item.riasec_local)
+            if code:
+                interest_hits.append((item, matched_text, start, end, weight, code))
+    use_lexicon_holland = not (interest_primary and interest_hits)
     holland: Dict[str, float] = {}
     elements: Dict[str, float] = {}
     element_labels: Dict[str, str] = {}
@@ -349,6 +560,8 @@ def extract_from_text(
 
     for match in matches:
         if match.negated:
+            continue
+        if match.kind in {"holland", "holland_code"} and not use_lexicon_holland:
             continue
         if match.kind == "holland" and match.target:
             code = ontology.holland_code(match.target)
@@ -431,6 +644,21 @@ def extract_from_text(
                         "source": "lexicon",
                     }
                 )
+
+    for item, matched_text, start, end, weight, code in interest_hits:
+        _add(holland, code.local, weight)
+        evidence.append(
+            {
+                "kind": f"interest_{item.kind}",
+                "text": matched_text,
+                "target": code.local,
+                "interest_iri": item.iri,
+                "weight": weight,
+                "start": start,
+                "end": end,
+                "source": "interest_catalog",
+            }
+        )
 
     element_spans = [
         (item["start"], item["end"])

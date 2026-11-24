@@ -112,6 +112,7 @@ class ReasoningService(Protocol):
         profile: Profile,
         candidates: Sequence[dict],
         policy: RankingPolicy,
+        skill_requirements: Optional[Mapping[str, Sequence[Mapping[str, object]]]] = None,
     ) -> Dict[str, dict]:
         ...
 
@@ -132,6 +133,7 @@ class SqlReasoner:
         profile: Profile,
         candidates: Sequence[dict],
         policy: RankingPolicy,
+        skill_requirements: Optional[Mapping[str, Sequence[Mapping[str, object]]]] = None,
     ) -> Dict[str, dict]:
         return {
             str(row["iri"]): {
@@ -140,6 +142,8 @@ class SqlReasoner:
                 "strong_holland": False,
                 "missing_education": False,
                 "missing_job_zone": False,
+                "skill_ready": False,
+                "skill_gap": False,
                 "tier": self.fallback_tier,
                 "source": "sql",
             }
@@ -193,6 +197,10 @@ class PelletReasoner:
             "job_zone_rating_class": "sliceJobZoneRatingClass",
             "rated_job_zone_property": "sliceRatedJobZoneProperty",
             "job_zone_property": "sliceJobZoneProperty",
+            "skill_requirement_property": "sliceSkillRequirementProperty",
+            "skill_requirement_class": "sliceSkillRequirementClass",
+            "skill_requirement_element_property": "sliceSkillRequirementElementProperty",
+            "required_skill_level_property": "sliceRequiredSkillLevelProperty",
         }
         values: Dict[str, str] = {}
         for key, local in fields.items():
@@ -226,6 +234,8 @@ class PelletReasoner:
             "strong_holland_class": ("outputStrongHollandClass", "iri"),
             "missing_education_class": ("outputMissingEducationClass", "iri"),
             "missing_job_zone_class": ("outputMissingJobZoneClass", "iri"),
+            "skill_ready_class": ("outputSkillReadyClass", "iri"),
+            "skill_gap_class": ("outputSkillGapClass", "iri"),
             "strong_tier": ("outputStrongTier", "literal"),
             "eligible_tier": ("outputEligibleTier", "literal"),
             "not_eligible_tier": ("outputNotEligibleTier", "literal"),
@@ -243,7 +253,11 @@ class PelletReasoner:
         self._output_map_cache = values
         return values
 
-    def _candidate_slice(self, candidates: Sequence[dict]) -> str:
+    def _candidate_slice(
+        self,
+        candidates: Sequence[dict],
+        skill_requirements: Optional[Mapping[str, Sequence[Mapping[str, object]]]] = None,
+    ) -> str:
         slice_map = self._slice_map()
         lines: List[str] = [
             "@prefix : <https://www.onetcenter.org/rdf/schema/onet/> .",
@@ -279,9 +293,34 @@ class PelletReasoner:
                         "",
                     ]
                 )
+            for index, requirement in enumerate(
+                (skill_requirements or {}).get(occ, ())
+            ):
+                element_iri = requirement.get("element_iri")
+                required_level = requirement.get("value")
+                if not element_iri or required_level is None:
+                    continue
+                digest = hashlib.sha1(
+                    f"{occ}:{element_iri}:{index}".encode("utf-8")
+                ).hexdigest()[:10]
+                req_iri = f"career:slice_skill_requirement_{digest}"
+                lines.extend(
+                    [
+                        f"<{occ}> <{slice_map['skill_requirement_property']}> {req_iri} .",
+                        f"{req_iri} a <{slice_map['skill_requirement_class']}> ;",
+                        f"    <{slice_map['skill_requirement_element_property']}> <{element_iri}> ;",
+                        f"    <{slice_map['required_skill_level_property']}> \"{float(required_level):.6f}\"^^xsd:decimal .",
+                        "",
+                    ]
+                )
         return "\n".join(lines) + "\n"
 
-    def _bundle(self, profile: Profile, candidates: Sequence[dict]) -> str:
+    def _bundle(
+        self,
+        profile: Profile,
+        candidates: Sequence[dict],
+        skill_requirements: Optional[Mapping[str, Sequence[Mapping[str, object]]]] = None,
+    ) -> str:
         try:
             from rdflib import Graph
         except Exception as exc:  # pragma: no cover - optional dependency
@@ -298,7 +337,10 @@ class PelletReasoner:
                 raise ReasoningError(f"reasoning input not found: {path}")
             graph.parse(path, format="turtle")
         graph.parse(data=profile.to_ttl(ontology=self._ontology()), format="turtle")
-        graph.parse(data=self._candidate_slice(candidates), format="turtle")
+        graph.parse(
+            data=self._candidate_slice(candidates, skill_requirements),
+            format="turtle",
+        )
         # Owlready2 does not parse Turtle reliably, so hand it RDF/XML.
         return graph.serialize(format="xml")
 
@@ -313,6 +355,7 @@ class PelletReasoner:
         profile: Profile,
         candidates: Sequence[dict],
         policy: RankingPolicy,
+        skill_requirements: Optional[Mapping[str, Sequence[Mapping[str, object]]]] = None,
     ) -> Dict[str, dict]:
         java = configure_java_environment()
         try:
@@ -334,7 +377,7 @@ class PelletReasoner:
             setattr(owlready2, "JAVA_EXE", str(java))
 
         self.temp_dir.mkdir(parents=True, exist_ok=True)
-        bundle_text = self._bundle(profile, candidates)
+        bundle_text = self._bundle(profile, candidates, skill_requirements)
         fd, bundle_name = tempfile.mkstemp(
             prefix="ontorag_reasoning_", suffix=".owl", dir=str(self.temp_dir)
         )
@@ -377,6 +420,8 @@ class PelletReasoner:
         strong_holland = self._class_instances(world, output["strong_holland_class"])
         missing_education = self._class_instances(world, output["missing_education_class"])
         missing_job_zone = self._class_instances(world, output["missing_job_zone_class"])
+        skill_ready = self._class_instances(world, output["skill_ready_class"])
+        skill_gap = self._class_instances(world, output["skill_gap_class"])
         result: Dict[str, dict] = {}
         for row in candidates:
             iri = str(row["iri"])
@@ -393,6 +438,8 @@ class PelletReasoner:
                 "strong_holland": iri in strong_holland,
                 "missing_education": iri in missing_education,
                 "missing_job_zone": iri in missing_job_zone,
+                "skill_ready": iri in skill_ready and iri not in skill_gap,
+                "skill_gap": iri in skill_gap,
                 "tier": tier,
                 "source": "pellet",
             }
@@ -411,12 +458,17 @@ class AutoReasoner:
         profile: Profile,
         candidates: Sequence[dict],
         policy: RankingPolicy,
+        skill_requirements: Optional[Mapping[str, Sequence[Mapping[str, object]]]] = None,
     ) -> Dict[str, dict]:
         try:
-            return self.pellet.infer(profile, candidates, policy)
+            return self.pellet.infer(
+                profile, candidates, policy, skill_requirements
+            )
         except (ReasoningUnavailable, ReasoningError) as exc:
             print(f"[ontorag] Pellet unavailable, using SQL eligibility fallback: {exc}", file=sys.stderr)
-            return self.fallback.infer(profile, candidates, policy)
+            return self.fallback.infer(
+                profile, candidates, policy, skill_requirements
+            )
 
 
 def make_reasoner(

@@ -80,6 +80,22 @@ def local_name(iri: str) -> str:
     return iri
 
 
+def parse_base(line: str) -> Optional[str]:
+    """Parse a Turtle ``@base``/``BASE`` declaration."""
+
+    stripped = line.strip()
+    if stripped.startswith("@base"):
+        body = stripped[len("@base") :].strip()
+    elif stripped.upper().startswith("BASE "):
+        body = stripped[len("BASE ") :].strip()
+    else:
+        return None
+    body = body.rstrip(".").strip()
+    if body.startswith("<") and body.endswith(">"):
+        return body[1:-1]
+    return None
+
+
 def parse_prefixes(line: str) -> Optional[Tuple[str, str]]:
     """Parse a Turtle @prefix/PREFIX declaration.
 
@@ -214,7 +230,9 @@ def _read_datatype(text: str, start: int, prefixes: Mapping[str, str]) -> Tuple[
     return _expand_prefixed(text[i:j], prefixes), j
 
 
-def tokenize(text: str, prefixes: Mapping[str, str]) -> Sequence[object]:
+def tokenize(
+    text: str, prefixes: Mapping[str, str], base: Optional[str] = None
+) -> Sequence[object]:
     """Tokenize one Turtle subject block.
 
     ``Term`` objects represent RDF terms.  The strings ``";"``, ``","`` and
@@ -255,7 +273,10 @@ def tokenize(text: str, prefixes: Mapping[str, str]) -> Sequence[object]:
             end = text.find(">", i + 1)
             if end < 0:
                 raise ValueError("unterminated IRI in Turtle block")
-            tokens.append(Term("iri", text[i + 1 : end]))
+            value = text[i + 1 : end]
+            if base and not (value.startswith("http://") or value.startswith("https://") or value.startswith("urn:")):
+                value = base + value
+            tokens.append(Term("iri", value))
             i = end + 1
             continue
         if c == '"':
@@ -328,10 +349,11 @@ def parse_block(
     text: str,
     prefixes: Mapping[str, str],
     drop_predicates: Optional[Set[str]] = None,
+    base: Optional[str] = None,
 ) -> Optional[Tuple[Term, Dict[str, list[Term]]]]:
     """Parse one subject block into ``(subject, {predicate: [objects]})``."""
 
-    tokens = tokenize(text, prefixes)
+    tokens = tokenize(text, prefixes, base)
     if not tokens:
         return None
     subject = tokens[0]
@@ -398,6 +420,7 @@ def iter_blocks(
 
     path = Path(path)
     prefixes = prefixes if prefixes is not None else {}
+    base: Optional[str] = None
     drop = drop_predicates or set()
     lines: list[str] = []
 
@@ -406,7 +429,7 @@ def iter_blocks(
             return None
         text = "\n".join(lines)
         lines.clear()
-        return parse_block(text, prefixes, drop)
+        return parse_block(text, prefixes, drop, base)
 
     with path.open("r", encoding="utf-8", errors="replace") as fh:
         for line in fh:
@@ -428,7 +451,23 @@ def iter_blocks(
                     prefixes[parsed[0]] = parsed[1]
                 continue
             if stripped.startswith("@base") or stripped.upper().startswith("BASE "):
+                parsed_base = parse_base(line)
+                if parsed_base:
+                    base = parsed_base
                 continue
+            # Generated O*NET source files often separate subject blocks
+            # without a blank line.  A non-indented subject line starts a new
+            # block even when the preceding block ended with ".".
+            if (
+                lines
+                and line
+                and not line[0].isspace()
+                and (stripped.startswith("<") or stripped.startswith("_:"))
+                and not stripped.endswith(".")
+            ):
+                block = flush()
+                if block is not None:
+                    yield block
             # Some validation samples use one complete triple per line rather
             # than indented blocks.  A top-level line ending in "." is such a
             # triple; flush the current block first.
@@ -437,7 +476,7 @@ def iter_blocks(
                     block = flush()
                     if block is not None:
                         yield block
-                parsed = parse_block(stripped, prefixes, drop)
+                parsed = parse_block(stripped, prefixes, drop, base)
                 if parsed is not None:
                     yield parsed
                 continue

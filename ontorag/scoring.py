@@ -26,6 +26,7 @@ class Recommendation:
     element_matches: List[dict] = field(default_factory=list)
     evidence: List[dict] = field(default_factory=list)
     explanation: str = ""
+    reasoning_flags: Dict[str, object] = field(default_factory=dict)
     description_en: Optional[str] = None
     description_id: Optional[str] = None
     row: dict = field(default_factory=dict)
@@ -53,15 +54,36 @@ def holland_score(
     profile: Profile,
     row: Mapping[str, object],
     policy: RankingPolicy,
+    interest_rows: Optional[Sequence[Mapping[str, object]]] = None,
 ) -> Optional[float]:
     if not profile.holland:
         return None
+    total_preference = sum(profile.holland.values()) or 1.0
+
+    # Prefer the graded CareerInterestTypesRating values when the index has
+    # them.  Fall back to the primary/secondary/tertiary ABox codes for older
+    # indexes or occupations without graded ratings.
+    if interest_rows:
+        ratings: Dict[str, float] = {}
+        for item in interest_rows:
+            name = str(item.get("element_name_en") or item.get("element_name_id") or "")
+            value = item.get("norm_value")
+            if name and value is not None:
+                ratings[name.lower()] = max(0.0, min(1.0, float(value)))
+        if ratings:
+            matched = sum(
+                weight * ratings[code.lower()]
+                for code, weight in profile.holland.items()
+                if code.lower() in ratings
+            )
+            if matched:
+                return max(0.0, min(1.0, matched / total_preference))
+
     code_weights = {
         str(row.get("holland_primary") or ""): policy.holland_primary_weight,
         str(row.get("holland_secondary") or ""): policy.holland_secondary_weight,
         str(row.get("holland_tertiary") or ""): policy.holland_tertiary_weight,
     }
-    total_preference = sum(profile.holland.values()) or 1.0
     matched = 0.0
     for code, code_weight in code_weights.items():
         if not code:
@@ -179,6 +201,7 @@ def score_candidates(
     ontology_scores: Optional[Mapping[str, float]] = None,
     ontology_normalization: Optional[str] = None,
     element_rows: Optional[Mapping[str, Sequence[Mapping[str, object]]]] = None,
+    interest_rows: Optional[Mapping[str, Sequence[Mapping[str, object]]]] = None,
 ) -> List[Recommendation]:
     """Score and rank candidate rows.
 
@@ -223,7 +246,12 @@ def score_candidates(
     for row in candidates:
         iri = str(row["iri"])
         component_values: Dict[str, float] = {}
-        holland = holland_score(profile, row, policy)
+        holland = holland_score(
+            profile,
+            row,
+            policy,
+            interest_rows=interest_rows.get(iri) if interest_rows else None,
+        )
         if holland is not None:
             component_values["holland"] = holland
         if not profile.elements:
@@ -269,6 +297,7 @@ def score_candidates(
                 component_scores={name: round(value, 8) for name, value in component_values.items()},
                 element_matches=element_matches,
                 row=dict(row),
+                reasoning_flags=dict(reasoning_flags.get(iri) or {}),
             )
         )
 

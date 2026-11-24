@@ -143,3 +143,49 @@ def write_semantic_fixture(tmpdir: str | Path) -> tuple[Path, Path]:
     abox.write_text(SEMANTIC_FIXTURE_ABOX, encoding="utf-8")
     overlay.write_text("", encoding="utf-8")
     return abox, overlay
+
+
+SKILL_FIXTURE_ABOX = """@prefix : <https://www.onetcenter.org/rdf/schema/onet/> .
+@prefix career: <https://example.org/career#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://example.org/occupation/skill-role> a :Occupation ;
+    :title "Skill Role" ;
+    :description "A role with a declared skill requirement." ;
+    :onetSOCCode "00-0000.00" ;
+    career:hasDataStatus career:CompleteData ;
+    career:hasMinEducationLevel career:S1 ;
+    career:hasPrimaryHollandCode career:Investigative ;
+    :hasRating <https://example.org/rating/skill-job-zone>, <https://example.org/rating/programming> .
+
+<https://example.org/rating/skill-job-zone> a :JobZoneRating ;
+    :ratedJobZone <https://example.org/job-zone/4> ;
+    :dataValue "4"^^xsd:integer .
+
+<https://example.org/rating/programming> a :KnowledgeRating ;
+    :ratedElement <https://example.org/element/programming> ;
+    :ratingScale <https://example.org/scale/level> ;
+    :dataValue "5.0"^^xsd:double .
+
+<https://example.org/element/programming> a :Element ;
+    :elementName "Programming" .
+
+<https://example.org/scale/level> a :Scale ;
+    :scaleID "LV" ;
+    :scaleName "Level" ;
+    :minimum "0"^^xsd:integer ;
+    :maximum "7"^^xsd:integer .
+
+<https://example.org/job-zone/4> a :JobZone ;
+    :jobZone "4"^^xsd:integer .
+"""
+
+
+def write_skill_fixture(tmpdir: str | Path) -> tuple[Path, Path]:
+    root = Path(tmpdir)
+    abox = root / "skill_abox.ttl"
+    overlay = root / "empty_overlay.ttl"
+    abox.write_text(SKILL_FIXTURE_ABOX, encoding="utf-8")
+    overlay.write_text("", encoding="utf-8")
+    return abox, overlay

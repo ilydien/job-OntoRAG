@@ -101,6 +101,38 @@ class TinyIndexTests(unittest.TestCase):
             )
             self.assertEqual(none_match[iri], [])
 
+    def test_occupation_profile_contains_task_and_requirements(self) -> None:
+        with Index(self.index_path) as index:
+            iri = "https://example.org/occupation/data-scientist"
+            profile = index.occupation_profile(iri)
+        self.assertIsNotNone(profile)
+        self.assertEqual(profile["occupation"]["title_en"], "Data Scientist")
+        self.assertGreaterEqual(len(profile["tasks"]), 1)
+        self.assertEqual(profile["tasks"][0]["task"], "Build data models")
+        self.assertEqual(profile["tasks"][0]["task_type"], None)
+
+    def test_requirements_for_occupation(self) -> None:
+        with Index(self.index_path) as index:
+            iri = "https://example.org/occupation/data-scientist"
+            payload = index.requirements_for(
+                iri, self.policy.requirement_categories, language="id"
+            )
+            missing = index.requirements_for(
+                "urn:missing", self.policy.requirement_categories, language="id"
+            )
+        self.assertIsNotNone(payload)
+        self.assertEqual(payload["occupation"]["title"], "Data Scientist")
+        self.assertEqual(payload["education"]["local"], "S1")
+        self.assertEqual(payload["job_zone"]["value"], 4)
+        knowledge = next(
+            item
+            for item in payload["requirements"]
+            if item["rating_type"] == "KnowledgeRating"
+        )
+        self.assertEqual(knowledge["label"], "Pengetahuan")
+        self.assertEqual(knowledge["items"][0]["label"], "Programming")
+        self.assertIsNone(missing)
+
     def test_meta_records_provenance(self) -> None:
         with Index(self.index_path) as index:
             meta = index.meta()

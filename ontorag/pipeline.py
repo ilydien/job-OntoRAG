@@ -5,11 +5,11 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence
 
 from . import config
 from .embeddings import EmbeddingBackend, EmbeddingUnavailable, SentenceTransformerBackend
-from .extraction import ElementCatalog, Profile, extract_from_text
+from .extraction import ElementCatalog, InterestCatalog, Profile, extract_from_text
 from .graph_search import (
     GraphSearchUnavailable,
     ontology_available,
@@ -50,6 +50,7 @@ class Pipeline:
         self.jena_store = jena_store
         self.retrieval_mode = (retrieval_mode or policy.retrieval_mode or "auto").lower()
         self.catalog = ElementCatalog.from_rows(index.element_catalog_rows())
+        self.interest_catalog = InterestCatalog.from_rows(index.interest_catalog_rows())
 
     @classmethod
     def from_paths(
@@ -196,6 +197,7 @@ class Pipeline:
         user_iri: Optional[str] = None,
         education: Optional[str] = None,
         max_job_zone: Optional[int] = None,
+        skills: Optional[Mapping[str, object]] = None,
     ) -> Profile:
         profile = extract_from_text(
             text,
@@ -208,7 +210,18 @@ class Pipeline:
             default_max_job_zone=max_job_zone,
             direct_element_weight=self.policy.direct_element_weight,
             direct_element_min_length=self.policy.direct_element_min_length,
+            interest_catalog=self.interest_catalog,
+            interest_activity_weight=self.policy.interest_activity_weight,
+            interest_keyword_weight=self.policy.interest_keyword_weight,
+            interest_primary=self.policy.interest_primary,
         )
+        if skills:
+            profile.add_skill_levels(
+                skills,
+                self.catalog,
+                min_level=self.policy.skill_level_min,
+                max_level=self.policy.skill_level_max,
+            )
         return profile
 
     def profile_from_json(
@@ -217,7 +230,14 @@ class Pipeline:
         text: Optional[str] = None,
         language: Optional[str] = None,
     ) -> Profile:
-        profile = Profile.load(str(path), self.ontology, self.catalog, language=language)
+        profile = Profile.load(
+            str(path),
+            self.ontology,
+            self.catalog,
+            language=language,
+            skill_level_min=self.policy.skill_level_min,
+            skill_level_max=self.policy.skill_level_max,
+        )
         if text:
             extracted = self.profile_from_text(
                 text,
@@ -225,6 +245,7 @@ class Pipeline:
                 user_iri=profile.user_iri,
                 education=profile.education_local,
                 max_job_zone=profile.max_job_zone,
+                skills=profile.skill_levels or None,
             )
             profile = profile.merged_with(extracted)
         return profile
@@ -264,6 +285,11 @@ class Pipeline:
         element_rows = (
             self.index.elements_for_many(candidate_iris, profile.elements.keys())
             if profile.elements
+            else None
+        )
+        interest_rows = (
+            self.index.interest_ratings_for_many(candidate_iris)
+            if profile.holland
             else None
         )
         semantic_scores: Dict[str, float] = {}
@@ -322,12 +348,55 @@ class Pipeline:
             semantic_scores=semantic_scores,
             ontology_scores=ontology_scores_map,
             element_rows=element_rows,
+            interest_rows=interest_rows,
             top_k=self.policy.reasoning_candidate_limit,
         )
         shortlist_rows = [recommendation.row for recommendation in shortlist]
+        skill_requirements = None
+        if shortlist_rows and profile.skill_levels:
+            skill_requirements = self.index.skill_requirements_for_many(
+                [str(row["iri"]) for row in shortlist_rows],
+                profile.skill_levels.keys(),
+                [category.rating_type for category in self.policy.requirement_categories],
+                scale_id=self.policy.skill_requirement_scale_id,
+            )
         reasoning_flags: Dict[str, dict] = {}
         if shortlist_rows:
-            reasoning_flags = self.reasoner.infer(profile, shortlist_rows, self.policy)
+            reasoning_flags = self.reasoner.infer(
+                profile,
+                shortlist_rows,
+                self.policy,
+                skill_requirements,
+            )
+        if profile.skill_levels and skill_requirements:
+            for row in shortlist_rows:
+                iri = str(row["iri"])
+                gaps = []
+                for requirement in skill_requirements.get(iri, ()):
+                    element_iri = str(requirement.get("element_iri") or "")
+                    user_level = profile.skill_levels.get(element_iri)
+                    required_level = requirement.get("value")
+                    if user_level is None or required_level is None:
+                        continue
+                    required = float(required_level)
+                    if float(user_level) >= required:
+                        continue
+                    gaps.append(
+                        {
+                            "iri": element_iri,
+                            "label": profile.skill_labels.get(
+                                element_iri,
+                                requirement.get("element_name_id")
+                                or requirement.get("element_name_en")
+                                or element_iri,
+                            ),
+                            "user_level": float(user_level),
+                            "required_level": required,
+                            "gap": round(required - float(user_level), 4),
+                        }
+                    )
+                if gaps:
+                    reasoning_flags.setdefault(iri, {})["skill_gaps"] = gaps
 
         recommendations = score_candidates(
             self.index,
@@ -339,6 +408,7 @@ class Pipeline:
             ontology_scores=ontology_scores_map,
             reasoning_flags=reasoning_flags,
             element_rows=element_rows,
+            interest_rows=interest_rows,
             top_k=top_k or self.policy.top_k,
         )
         for recommendation in recommendations:

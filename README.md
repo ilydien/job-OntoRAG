@@ -69,7 +69,8 @@ newer owlready2 releases may ship Jena jars that require a newer Java runtime.
 The index stores occupation metadata, education/job-zone filters, ratings,
 tasks, job titles, related occupations, an FTS5 table, and an element catalogue.
 A full build from the 604 MB ABox takes a few minutes and produces roughly
-430 MB of SQLite data.
+440 MB of SQLite data. Adding the raw WorkContext source increases the index
+to roughly 780 MB.
 
 ```bash
 python -m ontorag.cli build-index --rebuild
@@ -131,9 +132,21 @@ python -m ontorag.cli extract --text "Saya lulusan D3, suka mengajar." --format 
 Extraction is declarative. The text cues, negation handling, education aliases,
 Holland cues, and element cues come from `config/lexicon.ttl`. Direct O*NET
 element names are matched generically from the index catalogue, subject to the
-minimum length and weight in the ranking policy. Negated target phrases are
-removed from the lexical retrieval text while the raw text is preserved for
-audit and display.
+minimum length and weight in the ranking policy. Interest phrases are also
+matched against the indexed O*NET `InterestsActivity` and `InterestsKeyword`
+vocabulary, mapped to RIASEC through `illustratedBy`/`linkedTo`; their cue
+weights come from `config/ranking_policy.ttl`. These cues are interests, not
+aptitudes: ability/knowledge/skill ratings remain separate element scores.
+With `career:interestPrimary true` (the default), matched O*NET interest cues
+are authoritative for Holland and the manual Holland lexicon is used only when
+no interest cue matches. Other lexicon cues (education, job zone, elements,
+negation) remain active. Occupation Holland alignment uses the graded
+`CareerInterestTypesRating` values when available. Negated interest cues and
+lexicon target phrases are ignored for extraction and removed from the lexical
+retrieval text while the raw text is preserved for audit and display. Index
+version 4 also stores the O*NET interest vocabulary, graded RIASEC ratings,
+scale metadata, task ratings, education/training distributions, and work-context ratings; rebuild an older index with
+`python -m ontorag.cli build-index --rebuild`.
 
 ## Recommend occupations
 
@@ -257,13 +270,104 @@ with an error instead of being silently guessed.
 python -m ontorag.cli recommend --profile profile.json --text "Saya suka data." --top-k 5
 ```
 
+## Inspect occupation requirements
+
+The system can now look up one occupation directly, instead of requiring it
+to appear in a recommendation list:
+
+```bash
+python -m ontorag.cli requirements \
+  --occupation https://www.onetcenter.org/rdf/resources/onet/Occupation/<id> \
+  --format json
+```
+
+Web API:
+
+```http
+GET /api/occupation/requirements?iri=<occupation-iri>&language=id
+```
+
+Each result includes minimum education, job zone, and the top rated
+`EssentialSkillsRating`, `TransferableSkillsRating`, `KnowledgeRating`,
+`AbilitiesRating`, and `WorkActivitiesRating` entries. Requirement categories
+and limits live in `config/ranking_policy.ttl`; this view is descriptive and
+does not change the education/job-zone definition of eligibility. The web UI
+exposes it through the **Lihat kebutuhan** button on each result card.
+
+## Occupation profile: tasks, experience, and context
+
+One occupation can be inspected as a counselling profile:
+
+```bash
+python -m ontorag.cli profile \
+  --occupation https://www.onetcenter.org/rdf/resources/onet/Occupation/<id> \
+  --format json
+```
+
+Web API:
+
+```http
+GET /api/occupation/profile?iri=<occupation-iri>&language=id
+```
+
+It returns:
+
+- core, frequent, emerging, and task-linked DWA information;
+- education and related work-experience distributions;
+- work-context ratings grouped by indoor/outdoor, physical demand, and
+teamwork/contact;
+- the existing importance/level requirement sections.
+
+`TaskRating`, `EducationRating`, and `TrainingAndExperienceRating` come from
+`onet_merged.ttl`. `WorkContextRating` is currently a raw O*NET source, so the
+full profile build should include it:
+
+```bash
+python -m ontorag.cli build-index --rebuild --quiet \
+  --extra-source db_31_0_turtle/WorkContextRating.ttl \
+  --extra-source db_31_0_turtle/WorkContextCategory.ttl \
+  --extra-source db_31_0_turtle/Occupation.ttl
+```
+
+## Declared skill levels and readiness
+
+A profile can declare O*NET element proficiency levels on the O*NET Level scale
+(0–7):
+
+```json
+{
+  "education_level": "S1",
+  "max_job_zone": 4,
+  "skills": {
+    "Critical Thinking": 5.0,
+    "Programming": 4.5
+  }
+}
+```
+
+CLI:
+
+```bash
+python -m ontorag.cli recommend \
+  --text "Saya suka analisis data dan pemrograman." \
+  --skill "Critical Thinking=5" \
+  --skill "Programming=4.5" \
+  --top-k 5
+```
+
+The web API accepts the same map in the `skills` field of `/api/recommend`.
+Skill levels are compared with the occupation's `LV` (Level) ratings by the
+`SkillReadyRule`/`SkillGapRule` SWRL rules. Results expose `skill_ready` and
+`skill_gap` flags. These are advisory readiness signals; education plus job
+zone remain the definition of `EligibleOccupation`.
+
 ## Configuration and domain knowledge
 
 | Path | Purpose |
 | --- | --- |
 | `schema/onet_schema_en.ttl` | English-only app schema; no `@id` labels |
 | `i18n-*/onet_i18n_id.ttl` | Pure Indonesian label/comment overlay |
-| `config/ranking_policy.ttl` | weights, thresholds, candidate limits, tier order, defaults, description preview length |
+| `config/ranking_policy.ttl` | weights, thresholds, candidate limits, tier order, defaults, interest source priority/cue weights, skill scale, requirement categories, description preview length |
 | `config/index_policy.ttl` | indexed rating types, completeness policy, FTS tokenizer, embedding settings |
 | `config/lexicon.ttl` | Indonesian/English text cues and negation patterns |
 | `config/reasoning_map.ttl` | index-row to ontology-slice property mapping and inferred-class/tier output mapping |
@@ -271,6 +375,7 @@ python -m ontorag.cli recommend --profile profile.json --text "Saya suka data." 
 | `rules/eligibility.swrl.ttl` | education/job-zone eligibility and missing-constraint rules |
 | `rules/match_flags.swrl.ttl` | strong Holland match threshold rule |
 | `rules/tier.swrl.ttl` | `EligibleStrong` tier rule |
+| `rules/skill_readiness.swrl.ttl` | `SkillReady`/`SkillGap` from declared proficiency and O*NET Level requirements |
 | `queries/*.sql` | candidate filters, FTS lookup, evidence queries |
 | `ontorag/*.py` | generic engine, parser, indexer, scorer, output formatting |
 
@@ -305,9 +410,9 @@ The index test builds a small SQLite index from a local fixture; the full
 - Pellet was validated with `owlready2==0.48` and Java 21 on a small candidate
   slice. A sample profile with S1/job-zone-4 constraints produced
   `EligibleStrong` results through SWRL.
-- The test suite currently contains 92 tests. In the system interpreter it
-  reports 80 passes and 12 skips (optional rdflib/Jena and Pellet tests); in
-  the prepared `.venv` with Java and `owlready2==0.48` it reports 91 passes and
+- The test suite currently contains 109 tests. In the system interpreter it
+  reports 96 passes and 13 skips (optional rdflib/Jena and Pellet tests); in
+  the prepared `.venv` with Java and `owlready2==0.48` it reports 108 passes and
   1 skip.
 - HermiT is intended for OWL 2 DL schema validation, not for the runtime SWRL
   built-ins used here; the bundled HermiT reports built-in atoms as unsupported.
