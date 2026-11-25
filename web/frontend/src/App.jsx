@@ -277,6 +277,11 @@ function AnswerPanel({ data }) {
         {data.label || 'Jawaban'}
         {data.occupation?.title ? ` · ${data.occupation.title}` : ''}
       </p>
+      {data.match === 'similar' ? (
+        <p className="modal-muted">
+          Pertanyaan ditafsirkan dari kemiripan teks, bukan kata kunci persis.
+        </p>
+      ) : null}
       <h2>{answer.heading}</h2>
       {answer.summary ? <p className="desc">{answer.summary}</p> : null}
 

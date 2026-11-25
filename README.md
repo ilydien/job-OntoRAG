@@ -336,6 +336,13 @@ recommendation list. The question vocabulary lives in
 `config/question_lexicon.ttl`; the router in `ontorag/questions.py` only applies
 it. Text that is an interest description still produces recommendations.
 
+Keywords match first. If none match but the text is a question, a similarity
+fallback compares it against the per-intent `qlex:example` phrases, so a typo
+("pendidkan") or a morphological variant ("ketrampilan") still reaches the right
+intent. The fallback only runs for questions, never for interest text, and it
+needs a score above `qlex:similarityThreshold` plus a clear margin over the
+runner-up. Answers that came this way are labelled in the UI and CLI.
+
 ```bash
 python -m ontorag.cli ask --text "Apa pendidikan minimum pekerjaan Ilmuwan Data?"
 python -m ontorag.cli ask --text "Apa 5 tugas inti pekerjaan Ilmuwan Data?" --format json

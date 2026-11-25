@@ -1,17 +1,23 @@
 @prefix qlex: <https://example.org/qlex#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 # Vocabulary for the rule-based question router.  The Python module only
 # applies this file; it contains no Indonesian keyword list of its own.
+#
+# qlex:keyword is matched directly.  qlex:example is only used by the
+# similarity fallback, when no keyword matches but the text is a question.
 
 qlex:DefaultQuestionLexicon a qlex:QuestionLexicon ;
     rdfs:label "Default OntoRAG question lexicon"@en ;
+    qlex:similarityThreshold "0.55"^^xsd:decimal ;
     qlex:stopword
         "pekerjaan", "profesi", "orang", "seseorang", "seorang", "sebuah",
         "suatu", "yang", "adalah", "itu", "ini", "dari", "untuk", "pada",
         "di", "ke", "dengan", "dan", "atau", "lebih", "paling", "biasanya",
         "umumnya", "terkait", "dibutuhkan", "membutuhkan", "butuh", "banyak",
-        "nya" ;
+        "saya", "kamu", "anda", "kita", "kami", "harus", "bisa", "dapat",
+        "akan", "saja", "juga", "nya" ;
     qlex:questionWord
         "apa", "apakah", "berapa", "seberapa", "bagaimana", "mengapa",
         "kenapa", "mana", "siapa", "adakah" .
@@ -20,111 +26,150 @@ qlex:tasks_core a qlex:QuestionIntent ;
     rdfs:label "Tugas inti"@id ;
     qlex:priority 60 ;
     qlex:keyword "tugas inti", "lima tugas inti", "5 tugas inti", "tugas utama",
-        "tugas pokok", "core task", "core tasks" .
+        "tugas pokok", "core task", "core tasks" ;
+    qlex:example "apa saja tugas utama pekerjaan ini",
+        "tugas pokoknya apa saja", "pekerjaan ini tugas intinya apa".
 
 qlex:tasks_relevant a qlex:QuestionIntent ;
     rdfs:label "Tugas paling relevan"@id ;
     qlex:priority 55 ;
     qlex:keyword "tugas paling relevan", "tugas yang paling relevan",
-        "tugas relevan", "tugas paling penting", "most relevant task" .
+        "tugas relevan", "tugas paling penting", "most relevant task" ;
+    qlex:example "tugas apa yang paling relevan",
+        "tugas mana yang paling penting untuk pekerjaan ini".
 
 qlex:task_frequency a qlex:QuestionIntent ;
     rdfs:label "Frekuensi tugas"@id ;
     qlex:priority 50 ;
     qlex:keyword "seberapa sering tugas", "seberapa sering dilakukan",
-        "frekuensi tugas", "sering dilakukan", "task frequency" .
+        "frekuensi tugas", "sering dilakukan", "task frequency" ;
+    qlex:example "seberapa sering tugas ini dikerjakan",
+        "berapa sering kegiatan ini dilakukan".
 
 qlex:task_dwa a qlex:QuestionIntent ;
     rdfs:label "DWA / aktivitas rinci"@id ;
     qlex:priority 70 ;
     qlex:keyword "dwa", "detail activity", "detailed work activity",
-        "aktivitas rinci", "aktivitas detail", "kegiatan rinci" .
+        "aktivitas rinci", "aktivitas detail", "kegiatan rinci" ;
+    qlex:example "aktivitas rinci apa saja",
+        "kegiatan detail dari tugas ini apa".
 
 qlex:education_min a qlex:QuestionIntent ;
     rdfs:label "Pendidikan minimum"@id ;
     qlex:priority 60 ;
     qlex:keyword "pendidikan minimum", "pendidikan minimal", "kualifikasi pendidikan",
-        "syarat pendidikan", "ijazah minimum", "minimum education" .
+        "syarat pendidikan", "ijazah minimum", "minimum education" ;
+    qlex:example "sekolah apa yang ditempuh untuk pekerjaan ini",
+        "ijazah apa yang dimiliki untuk pekerjaan ini",
+        "pendidikan apa yang diperlukan untuk pekerjaan ini".
 
 qlex:job_zone a qlex:QuestionIntent ;
     rdfs:label "Job zone"@id ;
     qlex:priority 60 ;
-    qlex:keyword "job zone", "zona kerja", "zona pekerjaan" .
+    qlex:keyword "job zone", "zona kerja", "zona pekerjaan" ;
+    qlex:example "zona kerja pekerjaan ini apa",
+        "pekerjaan ini masuk zona berapa".
 
 qlex:education_distribution a qlex:QuestionIntent ;
     rdfs:label "Distribusi pendidikan pekerja"@id ;
     qlex:priority 55 ;
     qlex:keyword "distribusi pendidikan", "sebaran pendidikan",
-        "pendidikan pekerja", "education distribution" .
+        "pendidikan pekerja", "education distribution" ;
+    qlex:example "pendidikan para pekerja biasanya apa",
+        "sebaran pendidikan karyawan seperti apa".
 
 qlex:experience a qlex:QuestionIntent ;
     rdfs:label "Pengalaman kerja"@id ;
     qlex:priority 50 ;
     qlex:keyword "pengalaman kerja", "pengalaman yang dibutuhkan",
-        "pengalaman terkait", "berapa lama pengalaman", "related experience" .
+        "pengalaman terkait", "berapa lama pengalaman", "related experience" ;
+    qlex:example "pengalaman kerja apa yang diperlukan",
+        "berapa lama pengalaman yang diperlukan".
 
 qlex:training a qlex:QuestionIntent ;
     rdfs:label "Pelatihan dan magang"@id ;
     qlex:priority 50 ;
     qlex:keyword "pelatihan", "magang", "apprenticeship", "training",
-        "internship", "on the job training" .
+        "internship", "on the job training" ;
+    qlex:example "apakah ada pelatihan khusus",
+        "apakah ada program magang".
 
 qlex:skills a qlex:QuestionIntent ;
     rdfs:label "Skill penting"@id ;
     qlex:priority 30 ;
     qlex:keyword "skill penting", "keterampilan penting", "skill",
-        "keterampilan", "keahlian", "essential skill" .
+        "keterampilan", "keahlian", "essential skill" ;
+    qlex:example "keterampilan apa yang dikuasai",
+        "keahlian apa yang penting untuk pekerjaan ini".
 
 qlex:knowledge a qlex:QuestionIntent ;
     rdfs:label "Pengetahuan penting"@id ;
     qlex:priority 40 ;
-    qlex:keyword "pengetahuan", "knowledge", "ilmu yang dibutuhkan" .
+    qlex:keyword "pengetahuan", "knowledge", "ilmu yang dibutuhkan" ;
+    qlex:example "pengetahuan apa yang dikuasai",
+        "ilmu apa yang diperlukan untuk pekerjaan ini".
 
 qlex:abilities a qlex:QuestionIntent ;
     rdfs:label "Ability penting"@id ;
     qlex:priority 40 ;
-    qlex:keyword "kemampuan", "ability", "abilitas", "ability penting" .
+    qlex:keyword "kemampuan", "ability", "abilitas", "ability penting" ;
+    qlex:example "kemampuan apa yang diperlukan",
+        "abilitas apa yang penting untuk pekerjaan ini".
 
 qlex:work_activities a qlex:QuestionIntent ;
     rdfs:label "Work activity penting"@id ;
     qlex:priority 45 ;
     qlex:keyword "aktivitas kerja", "work activity", "work activities",
-        "kegiatan kerja" .
+        "kegiatan kerja" ;
+    qlex:example "kegiatan kerja apa saja",
+        "aktivitas kerja sehari hari apa".
 
 qlex:level_importance a qlex:QuestionIntent ;
     rdfs:label "Level dan importance"@id ;
     qlex:priority 65 ;
     qlex:keyword "level dan importance", "tingkat dan kepentingan",
-        "tingkat kepentingan", "seberapa penting", "level", "importance" .
+        "tingkat kepentingan", "seberapa penting", "level", "importance" ;
+    qlex:example "seberapa penting kemampuan ini",
+        "berapa tingkat kepentingan tiap persyaratan".
 
 qlex:context_indoor_outdoor a qlex:QuestionIntent ;
     rdfs:label "Dalam atau luar ruangan"@id ;
     qlex:priority 60 ;
     qlex:keyword "dalam atau luar ruangan", "di dalam ruangan", "dalam ruangan",
-        "luar ruangan", "indoor", "outdoor" .
+        "luar ruangan", "indoor", "outdoor" ;
+    qlex:example "pekerjaan ini dilakukan di dalam atau luar ruangan",
+        "apakah pekerjaan ini di luar ruangan".
 
 qlex:context_physical a qlex:QuestionIntent ;
     rdfs:label "Tuntutan fisik"@id ;
     qlex:priority 55 ;
-    qlex:keyword "tuntutan fisik", "beban fisik", "physical demand" .
+    qlex:keyword "tuntutan fisik", "beban fisik", "physical demand" ;
+    qlex:example "apakah pekerjaan ini berat secara fisik",
+        "bagaimana beban fisik pekerjaan ini".
 
 qlex:context_teamwork a qlex:QuestionIntent ;
     rdfs:label "Kerja tim dan kontak sosial"@id ;
     qlex:priority 55 ;
     qlex:keyword "kerja tim", "teamwork", "kontak sosial", "interaksi sosial",
-        "bekerja dengan orang" .
+        "bekerja dengan orang" ;
+    qlex:example "apakah pekerjaan ini butuh kerja tim",
+        "apakah banyak berinteraksi dengan orang".
 
 qlex:description a qlex:QuestionIntent ;
     rdfs:label "Deskripsi pekerjaan"@id ;
     qlex:priority 40 ;
     qlex:keyword "deskripsi", "description", "gambaran pekerjaan",
-        "ringkasan pekerjaan" .
+        "ringkasan pekerjaan" ;
+    qlex:example "pekerjaan ini secara umum seperti apa",
+        "gambaran singkat pekerjaan ini".
 
 qlex:tasks_and_titles a qlex:QuestionIntent ;
     rdfs:label "Tugas representatif dan jabatan terkait"@id ;
     qlex:priority 65 ;
     qlex:keyword "tugas representatif dan jabatan terkait", "tugas representatif",
-        "jabatan terkait", "posisi terkait", "representative tasks" .
+        "jabatan terkait", "posisi terkait", "representative tasks" ;
+    qlex:example "jabatan lain yang terkait apa saja",
+        "posisi terkait pekerjaan ini apa".
 
 qlex:why_recommended a qlex:QuestionIntent ;
     rdfs:label "Alasan rekomendasi"@id ;
@@ -132,10 +177,14 @@ qlex:why_recommended a qlex:QuestionIntent ;
     qlex:keyword "mengapa direkomendasikan", "kenapa direkomendasikan",
         "mengapa cocok", "kenapa cocok", "alasan direkomendasikan",
         "direkomendasikan", "mengapa pekerjaan", "kenapa pekerjaan",
-        "why recommended" .
+        "why recommended" ;
+    qlex:example "mengapa pekerjaan ini cocok untuk saya",
+        "kenapa pekerjaan ini direkomendasikan".
 
 qlex:score_components a qlex:QuestionIntent ;
     rdfs:label "Komponen skor dan evidence"@id ;
     qlex:priority 55 ;
     qlex:keyword "komponen skor", "komponen penilaian", "score component",
-        "evidence", "bukti" .
+        "evidence", "bukti" ;
+    qlex:example "bagaimana skor ini dihitung",
+        "komponen apa yang menentukan skor ini".

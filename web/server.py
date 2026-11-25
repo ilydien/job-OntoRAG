@@ -292,6 +292,7 @@ async def ask(request: AskRequest) -> dict:
         "mode": "answer",
         "intent": intent,
         "label": decision.get("label"),
+        "match": decision.get("match"),
         "occupation": occupation,
         "answer": answer,
     }

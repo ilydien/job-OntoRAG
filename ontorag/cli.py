@@ -369,6 +369,7 @@ def cmd_ask(args: argparse.Namespace) -> int:
         print(json.dumps(
             {
                 "intent": decision["intent"],
+                "match": decision.get("match"),
                 "occupation": decision["occupation"],
                 "answer": answer,
             },
@@ -378,6 +379,8 @@ def cmd_ask(args: argparse.Namespace) -> int:
         return 0
     occupation = decision["occupation"]
     print(f"{decision.get('label')} · {occupation.get('title')} [{occupation.get('soc') or '-'}]")
+    if decision.get("match") == "similar":
+        print("(ditafsirkan dari kemiripan teks, bukan kata kunci persis)")
     print(answer["heading"])
     print(answer["summary"])
     for fact in answer["facts"]:

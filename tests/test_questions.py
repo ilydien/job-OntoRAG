@@ -73,6 +73,40 @@ class QuestionRouterTests(unittest.TestCase):
         self.assertIsNone(self.router.classify(text))
         self.assertEqual(self.router.decide(text)["mode"], "recommend")
 
+    def test_lexicon_loads_threshold_and_stopwords(self) -> None:
+        # Guards the TTL parse: a bare decimal silently becomes "0".
+        self.assertGreater(self.router.lexicon.similarity_threshold, 0.1)
+        self.assertIn("pekerjaan", self.router.lexicon.stopwords)
+
+    def test_similarity_fallback_matches_typo_and_morphology(self) -> None:
+        for expected, text in {
+            "education_min": "Apa pendidkan minimum pekerjaan Data Scientist?",
+            "skills": "Apa ketrampilan penting untuk Data Scientist?",
+        }.items():
+            with self.subTest(intent=expected):
+                intent, match = self.router._classify_scored(text)
+                self.assertIsNotNone(intent)
+                self.assertEqual(intent.key, expected)
+                self.assertEqual(match, "similar")
+
+    def test_interest_text_never_uses_similarity(self) -> None:
+        # No question mark or question word: the fallback must not run.
+        intent, match = self.router._classify_scored("saya suka mengajar anak")
+        self.assertIsNone(intent)
+        self.assertIsNone(match)
+
+    def test_unrelated_question_gets_no_intent(self) -> None:
+        decision = self.router.decide("Apakah besok akan hujan di kota ini?")
+        self.assertEqual(decision["mode"], "recommend")
+
+    def test_decide_reports_match_kind(self) -> None:
+        keyword = self.router.decide("Apa pendidikan minimum pekerjaan Data Scientist?")
+        self.assertEqual(keyword["match"], "keyword")
+        similar = self.router.decide("Apa pendidkan minimum pekerjaan Data Scientist?")
+        self.assertEqual(similar["mode"], "answer")
+        self.assertEqual(similar["intent"], "education_min")
+        self.assertEqual(similar["match"], "similar")
+
     def test_resolves_occupation_name(self) -> None:
         self.assertEqual(self.router.search("data scientist")[0]["iri"], IRI)
         decision = self.router.decide("Apa pendidikan minimum pekerjaan Data Scientist?")

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 from typing import Iterable, List, Optional, Sequence, Tuple
 
 from . import config, ttl_stream
@@ -42,6 +43,13 @@ class QuestionIntent:
     label: str
     keywords: Tuple[str, ...]
     priority: int
+    examples: Tuple[str, ...] = ()
+
+    @property
+    def references(self) -> Tuple[str, ...]:
+        """Strings the similarity fallback compares a question against."""
+
+        return self.keywords + self.examples
 
 
 def _tokens(text: str) -> List[str]:
@@ -67,10 +75,12 @@ class QuestionLexicon:
         intents: Sequence[QuestionIntent],
         stopwords: Iterable[str],
         question_words: Iterable[str],
+        similarity_threshold: float = 0.55,
     ) -> None:
         self.intents = list(intents)
         self.stopwords = {word.lower() for word in stopwords}
         self.question_words = tuple(dict.fromkeys(word.lower() for word in question_words))
+        self.similarity_threshold = float(similarity_threshold)
 
     @classmethod
     def load(cls, path: str = config.DEFAULT_QUESTION_LEXICON) -> "QuestionLexicon":
@@ -78,6 +88,7 @@ class QuestionLexicon:
         intents: List[QuestionIntent] = []
         stopwords: List[str] = []
         question_words: List[str] = []
+        threshold: Optional[float] = None
         for subject, predicates in blocks.items():
             types = {t.value for t in predicates.get(RDF_TYPE, []) if t.kind == "iri"}
             words = [
@@ -91,12 +102,23 @@ class QuestionLexicon:
                 for t in predicates.get(config.QLEX + "questionWord", [])
                 if t.kind == "literal" and str(t.value).strip()
             )
+            if threshold is None:
+                threshold = ttl_stream.numeric_value(
+                    predicates, config.QLEX + "similarityThreshold", None
+                )
             if config.QLEX + "QuestionIntent" not in types:
                 continue
             keywords = tuple(
                 dict.fromkeys(
                     t.value
                     for t in predicates.get(config.QLEX + "keyword", [])
+                    if t.kind == "literal" and str(t.value).strip()
+                )
+            )
+            examples = tuple(
+                dict.fromkeys(
+                    t.value
+                    for t in predicates.get(config.QLEX + "example", [])
                     if t.kind == "literal" and str(t.value).strip()
                 )
             )
@@ -112,15 +134,29 @@ class QuestionLexicon:
                     label=label,
                     keywords=keywords,
                     priority=int(priority or 0),
+                    examples=examples,
                 )
             )
         if not intents:
             raise ValueError(f"question lexicon {path} defines no intents")
-        return cls(intents, stopwords, question_words)
+        return cls(
+            intents,
+            stopwords,
+            question_words,
+            similarity_threshold=0.55 if threshold is None else float(threshold),
+        )
 
 
 class QuestionRouter:
     """Answer questions about one occupation from the index."""
+
+    # A similar intent must beat the runner-up by this much, so an unclear
+    # question is not answered with a guess.
+    SIMILARITY_MARGIN = 0.1
+    # Tokens shorter than this must match exactly; fuzzy matching on short
+    # Indonesian words produces too many accidental pairs.
+    MIN_FUZZY_LENGTH = 4
+    FUZZY_RATIO = 0.8
 
     def __init__(
         self,
@@ -148,10 +184,15 @@ class QuestionRouter:
             re.compile(r"(?<!\w)" + re.escape(word) + r"(?!\w)")
             for word in self.lexicon.question_words
         ]
+        self._similarity_refs = [
+            (intent, self._content_tokens(reference))
+            for intent in self.lexicon.intents
+            for reference in intent.references
+        ]
 
     # -- classification ---------------------------------------------------
 
-    def classify(self, text: str) -> Optional[QuestionIntent]:
+    def _keyword_intent(self, text: str) -> Optional[QuestionIntent]:
         lowered = (text or "").lower()
         best: Optional[Tuple[int, QuestionIntent]] = None
         for intent, keyword, regex in self._compiled:
@@ -161,6 +202,82 @@ class QuestionRouter:
             if best is None or score > best[0]:
                 best = (score, intent)
         return best[1] if best else None
+
+    @classmethod
+    def _token_close(cls, left: str, right: str) -> bool:
+        if left == right:
+            return True
+        if len(left) < cls.MIN_FUZZY_LENGTH or len(right) < cls.MIN_FUZZY_LENGTH:
+            return False
+        return SequenceMatcher(None, left, right).ratio() >= cls.FUZZY_RATIO
+
+    @classmethod
+    def _similarity(cls, query: Sequence[str], reference: Sequence[str]) -> float:
+        """Token F1 between a question and one reference phrase.
+
+        Tokens count as equal when they are equal or fuzzy close, so a typo
+        or a morphological variant still matches ("pendidkan", "ketrampilan").
+        """
+
+        if not query or not reference:
+            return 0.0
+        matched_query = sum(
+            1
+            for token in query
+            if any(cls._token_close(token, other) for other in reference)
+        )
+        if not matched_query:
+            return 0.0
+        matched_reference = sum(
+            1
+            for token in reference
+            if any(cls._token_close(token, other) for other in query)
+        )
+        precision = matched_query / len(query)
+        recall = matched_reference / len(reference)
+        return 2 * precision * recall / (precision + recall)
+
+    def _similar_intents(self, text: str) -> List[Tuple[float, QuestionIntent]]:
+        query = self._content_tokens(text)
+        if not query:
+            return []
+        best: dict = {}
+        for intent, reference in self._similarity_refs:
+            if not reference:
+                continue
+            score = self._similarity(query, reference)
+            current = best.get(intent.key)
+            if current is None or score > current[0]:
+                best[intent.key] = (score, intent)
+        return sorted(
+            (item for item in best.values() if item[0] > 0),
+            key=lambda item: (-item[0], -item[1].priority),
+        )
+
+    def classify(self, text: str) -> Optional[QuestionIntent]:
+        intent, _ = self._classify_scored(text)
+        return intent
+
+    def _classify_scored(
+        self, text: str
+    ) -> Tuple[Optional[QuestionIntent], Optional[str]]:
+        """Return ``(intent, match)``; ``match`` is ``keyword`` or ``similar``."""
+
+        hit = self._keyword_intent(text)
+        if hit is not None:
+            return hit, "keyword"
+        if not self.looks_like_question(text):
+            return None, None
+        scored = self._similar_intents(text)
+        if not scored:
+            return None, None
+        best_score, best_intent = scored[0]
+        runner_up = scored[1][0] if len(scored) > 1 else 0.0
+        if best_score < self.lexicon.similarity_threshold:
+            return None, None
+        if best_score - runner_up < self.SIMILARITY_MARGIN:
+            return None, None
+        return best_intent, "similar"
 
     def looks_like_question(self, text: str) -> bool:
         if "?" in (text or ""):
@@ -259,13 +376,14 @@ class QuestionRouter:
         language: str = "id",
         occupation: Optional[str] = None,
     ) -> dict:
-        intent = self.classify(text)
+        intent, match = self._classify_scored(text)
         occupations, ambiguous = self.resolve(text, occupation)
         if intent is None:
             return {"mode": "recommend"}
         base = {
             "intent": intent.key,
             "label": intent.label,
+            "match": match,
         }
         if ambiguous:
             return {**base, "mode": "disambiguate", "candidates": occupations}
