@@ -294,6 +294,8 @@ async def ask(request: AskRequest) -> dict:
         "label": decision.get("label"),
         "match": decision.get("match"),
         "occupation": occupation,
+        "occupation_match": decision.get("occupation_match"),
+        "suggestions": decision.get("suggestions", []),
         "answer": answer,
     }
 

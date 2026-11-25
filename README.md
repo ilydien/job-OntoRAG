@@ -348,8 +348,12 @@ python -m ontorag.cli ask --text "Apa pendidikan minimum pekerjaan Ilmuwan Data?
 python -m ontorag.cli ask --text "Apa 5 tugas inti pekerjaan Ilmuwan Data?" --format json
 ```
 
-If the occupation name is ambiguous the router lists candidates; pass
-`--occupation <iri>` to answer for one of them.
+Occupation names match by exact phrase first, then fuzzily (same token-similarity
+rule as the intent fallback), so a typo ("ilmuwn data") still finds the
+occupation. A non-exact match returns up to five `suggestions`; the UI shows
+them as "Apakah yang kamu maksud" chips with the current choice highlighted, and
+a click asks again with `occupation=<iri>`. The explicit choice keeps the chips
+so the highlight can move.
 
 Web API:
 
@@ -359,7 +363,8 @@ GET  /api/occupation/search?q=ilmuwan+data
 ```
 
 `POST /api/ask` returns `mode: "answer"`, `"disambiguate"`, `"recommend"`, or
-`"need_occupation"`. The `context` field lets "mengapa direkomendasikan?" and
+`"need_occupation"`, plus `occupation_match: "exact" | "fuzzy" | "explicit" | "ambiguous"`
+and `suggestions`. The `context` field lets "mengapa direkomendasikan?" and
 "komponen skor" questions reuse the last recommendation run.
 
 ## Declared skill levels and readiness

@@ -153,6 +153,8 @@ class QuestionRouter:
     # A similar intent must beat the runner-up by this much, so an unclear
     # question is not answered with a guess.
     SIMILARITY_MARGIN = 0.1
+    # Occupation suggestions offered when the name does not match exactly.
+    SUGGESTION_LIMIT = 5
     # Tokens shorter than this must match exactly; fuzzy matching on short
     # Indonesian words produces too many accidental pairs.
     MIN_FUZZY_LENGTH = 4
@@ -303,9 +305,13 @@ class QuestionRouter:
             if token not in self.lexicon.stopwords and token not in self.lexicon.question_words
         ]
 
-    @staticmethod
-    def _matches(token: str, title_token: str) -> bool:
-        return token == title_token or (len(token) >= 3 and title_token.startswith(token))
+    @classmethod
+    def _matches(cls, token: str, title_token: str) -> bool:
+        if token == title_token:
+            return True
+        if len(token) >= 3 and title_token.startswith(token):
+            return True
+        return cls._token_close(token, title_token)
 
     def _score(self, raw_tokens: Sequence[str], content: Sequence[str], title: str) -> int:
         title_tokens = _tokens(title)
@@ -349,26 +355,64 @@ class QuestionRouter:
     def search(self, text: str, limit: int = 10) -> List[dict]:
         return [self._occ(row) for _, row in self._scored(text)[:limit]]
 
-    def resolve(self, text: str, occupation_iri: Optional[str] = None):
-        """Return ``(occupations, ambiguous)`` for the text or explicit IRI."""
+    def resolve(self, text: str, occupation_iri: Optional[str] = None) -> dict:
+        """Resolve the occupation in ``text`` (or an explicit IRI).
+
+        Returns the chosen occupation, the ranked ``suggestions``, an
+        ``occupation_match`` of ``exact``, ``fuzzy``, ``explicit``, or
+        ``ambiguous``, and whether the user must choose an ``ambiguous`` match.
+        """
 
         if occupation_iri:
             row = self.index.summary(occupation_iri)
-            return ([self._occ(row)] if row else []), False
+            chosen = self._occ(row) if row else None
+            suggestions = [
+                self._occ(item[1])
+                for item in self._scored(text)[: self.SUGGESTION_LIMIT]
+            ]
+            if chosen and chosen["iri"] not in {item["iri"] for item in suggestions}:
+                suggestions = ([chosen] + suggestions)[: self.SUGGESTION_LIMIT]
+            return {
+                "occupation": chosen,
+                "suggestions": suggestions,
+                "occupation_match": "explicit",
+                "ambiguous": False,
+            }
         scored = self._scored(text)
         if not scored:
-            return [], False
+            return {
+                "occupation": None,
+                "suggestions": [],
+                "occupation_match": None,
+                "ambiguous": False,
+            }
         top_score = scored[0][0]
+        suggestions = [
+            self._occ(item[1]) for item in scored[: self.SUGGESTION_LIMIT]
+        ]
         if top_score >= 1000:
-            tied = [item for item in scored if item[0] == top_score]
-            if len({str(item[1].get("iri")) for item in tied}) == 1:
-                return [self._occ(tied[0][1])], False
-            return [self._occ(item[1]) for item in tied[:6]], True
-        if len(scored) == 1:
-            return [self._occ(scored[0][1])], False
-        if top_score - scored[1][0] >= 100:
-            return [self._occ(scored[0][1])], False
-        return [self._occ(item[1]) for item in scored[:6]], True
+            tied = {str(item[1].get("iri")) for item in scored if item[0] == top_score}
+            if len(tied) == 1:
+                return {
+                    "occupation": self._occ(scored[0][1]),
+                    "suggestions": [],
+                    "occupation_match": "exact",
+                    "ambiguous": False,
+                }
+        runner_up = scored[1][0] if len(scored) > 1 else 0
+        if len(scored) == 1 or top_score - runner_up >= 100:
+            return {
+                "occupation": self._occ(scored[0][1]),
+                "suggestions": suggestions,
+                "occupation_match": "fuzzy",
+                "ambiguous": False,
+            }
+        return {
+            "occupation": None,
+            "suggestions": suggestions,
+            "occupation_match": "ambiguous",
+            "ambiguous": True,
+        }
 
     def decide(
         self,
@@ -377,7 +421,7 @@ class QuestionRouter:
         occupation: Optional[str] = None,
     ) -> dict:
         intent, match = self._classify_scored(text)
-        occupations, ambiguous = self.resolve(text, occupation)
+        resolved = self.resolve(text, occupation)
         if intent is None:
             return {"mode": "recommend"}
         base = {
@@ -385,20 +429,34 @@ class QuestionRouter:
             "label": intent.label,
             "match": match,
         }
-        if ambiguous:
-            return {**base, "mode": "disambiguate", "candidates": occupations}
-        if len(occupations) == 1:
-            return {**base, "mode": "answer", "occupation": occupations[0]}
-        if self.looks_like_question(text):
-            return {
-                **base,
-                "mode": "need_occupation",
-                "message": (
-                    "Nama pekerjaan belum dikenali. Sebutkan nama pekerjaan, "
-                    "misalnya 'Ilmuwan Data' atau 'Perawat Terdaftar'."
-                ),
-            }
-        return {"mode": "recommend"}
+        chosen = resolved["occupation"]
+        if chosen is None:
+            if resolved["suggestions"]:
+                return {
+                    **base,
+                    "mode": "disambiguate",
+                    "occupation_match": resolved["occupation_match"],
+                    "suggestions": resolved["suggestions"],
+                }
+            if self.looks_like_question(text):
+                return {
+                    **base,
+                    "mode": "need_occupation",
+                    "message": (
+                        "Nama pekerjaan belum dikenali. Sebutkan nama pekerjaan, "
+                        "misalnya 'Ilmuwan Data' atau 'Perawat Terdaftar'."
+                    ),
+                }
+            return {"mode": "recommend"}
+        result = {
+            **base,
+            "mode": "answer",
+            "occupation": chosen,
+            "occupation_match": resolved["occupation_match"],
+        }
+        if resolved["occupation_match"] != "exact" and resolved["suggestions"]:
+            result["suggestions"] = resolved["suggestions"]
+        return result
 
     # -- answer assembly --------------------------------------------------
 

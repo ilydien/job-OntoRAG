@@ -358,8 +358,11 @@ def cmd_ask(args: argparse.Namespace) -> int:
             print(f"mode: {decision['mode']}")
             if decision.get("message"):
                 print(decision["message"])
-            for candidate in decision.get("candidates", []):
-                print(f"- {candidate.get('title')} [{candidate.get('soc')}] {candidate.get('iri')}")
+            suggestions = decision.get("suggestions", [])
+            if suggestions:
+                print("Apakah yang kamu maksud: " + ", ".join(
+                    f"{item.get('title')} [{item.get('soc')}]" for item in suggestions
+                ))
             return 0
         if decision["intent"] in EVIDENCE_INTENTS:
             print(f"{decision.get('label')}: butuh konteks pencarian; jawab lewat web UI.")
@@ -381,6 +384,16 @@ def cmd_ask(args: argparse.Namespace) -> int:
     print(f"{decision.get('label')} · {occupation.get('title')} [{occupation.get('soc') or '-'}]")
     if decision.get("match") == "similar":
         print("(ditafsirkan dari kemiripan teks, bukan kata kunci persis)")
+    suggestions = decision.get("suggestions", [])
+    if suggestions:
+        print("Apakah yang kamu maksud: " + ", ".join(
+            (
+                item.get("title") + " (dipilih)"
+                if item.get("iri") == occupation.get("iri")
+                else item.get("title")
+            )
+            for item in suggestions
+        ))
     print(answer["heading"])
     print(answer["summary"])
     for fact in answer["facts"]:

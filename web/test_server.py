@@ -19,26 +19,38 @@ class _Profile:
 
 
 class _Index:
+    _CATALOG = [
+        {
+            "iri": "occ:data",
+            "soc": "15-2051.00",
+            "title_en": "Data Scientist",
+            "title_id": "Ilmuwan Data",
+        },
+        {
+            "iri": "occ:nurse-icu",
+            "soc": "29-1141.01",
+            "title_en": "ICU Nurse",
+            "title_id": "Perawat ICU",
+        },
+        {
+            "iri": "occ:nurse-child",
+            "soc": "29-1141.02",
+            "title_en": "Pediatric Nurse",
+            "title_id": "Perawat Anak",
+        },
+    ]
+
     def meta(self) -> dict:
         return {"occupations": "3"}
 
     def summary(self, occupation_iri: str):
-        return {
-            "iri": occupation_iri,
-            "soc": "15-2051.00",
-            "title_en": "Data Scientist",
-            "title_id": "Ilmuwan Data",
-        }
+        row = next(
+            (item for item in self._CATALOG if item["iri"] == occupation_iri), None
+        )
+        return row or self._CATALOG[0]
 
     def occupation_catalog(self) -> list:
-        return [
-            {
-                "iri": "occ:data",
-                "soc": "15-2051.00",
-                "title_en": "Data Scientist",
-                "title_id": "Ilmuwan Data",
-            }
-        ]
+        return self._CATALOG
 
     def requirements_for(self, occupation_iri, categories, language="id"):
         return {
@@ -117,6 +129,38 @@ class ServerTests(unittest.TestCase):
     def test_occupation_search(self) -> None:
         data = asyncio.run(server.occupation_search(q="ilmuwan data"))
         self.assertEqual(data["items"][0]["soc"], "15-2051.00")
+
+    def test_ask_ambiguous_name_returns_suggestions(self) -> None:
+        data = asyncio.run(
+            server.ask(server.AskRequest(text="Apa pendidikan minimum pekerjaan Perawat?"))
+        )
+        self.assertEqual(data["mode"], "disambiguate")
+        self.assertEqual(data["occupation_match"], "ambiguous")
+        ir_is = {item["iri"] for item in data["suggestions"]}
+        self.assertEqual(ir_is, {"occ:nurse-icu", "occ:nurse-child"})
+
+    def test_ask_explicit_choice_keeps_suggestions(self) -> None:
+        data = asyncio.run(
+            server.ask(
+                server.AskRequest(
+                    text="Apa pendidikan minimum pekerjaan Perawat?",
+                    occupation="occ:nurse-icu",
+                )
+            )
+        )
+        self.assertEqual(data["mode"], "answer")
+        self.assertEqual(data["occupation_match"], "explicit")
+        self.assertEqual(data["occupation"]["iri"], "occ:nurse-icu")
+        self.assertIn("occ:nurse-icu", [item["iri"] for item in data["suggestions"]])
+
+    def test_ask_exact_name_has_no_suggestions(self) -> None:
+        data = asyncio.run(
+            server.ask(
+                server.AskRequest(text="Apa pendidikan minimum pekerjaan Ilmuwan Data?")
+            )
+        )
+        self.assertEqual(data["occupation_match"], "exact")
+        self.assertEqual(data["suggestions"], [])
 
 
 if __name__ == "__main__":

@@ -138,5 +138,70 @@ class QuestionRouterTests(unittest.TestCase):
         self.assertEqual(tasks["items"][0]["title"], "Build data models")
 
 
+class _StubIndex:
+    """Catalog stub so name-resolution tests need no SQLite build."""
+
+    def __init__(self, rows) -> None:
+        self._rows = rows
+
+    def occupation_catalog(self):
+        return self._rows
+
+    def summary(self, iri):
+        return next((row for row in self._rows if row["iri"] == iri), None)
+
+
+def _row(iri: str, title_id: str, soc: str = "00-0000.00") -> dict:
+    return {"iri": iri, "soc": soc, "title_id": title_id, "title_en": title_id}
+
+
+CATALOG = [
+    _row("occ:data", "Ilmuwan Data", "15-2051.00"),
+    _row("occ:nurse-icu", "Perawat ICU", "29-1141.01"),
+    _row("occ:nurse-child", "Perawat Anak", "29-1141.02"),
+    _row("occ:vet", "Dokter Hewan", "29-1131.00"),
+]
+
+
+class OccupationSuggestionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.router = QuestionRouter(_StubIndex(CATALOG), None)
+
+    def test_exact_name_offers_no_suggestions(self) -> None:
+        decision = self.router.decide("Apa pendidikan minimum pekerjaan Ilmuwan Data?")
+        self.assertEqual(decision["mode"], "answer")
+        self.assertEqual(decision["occupation_match"], "exact")
+        self.assertFalse(decision.get("suggestions"))
+
+    def test_typo_name_is_offered_as_a_suggestion(self) -> None:
+        decision = self.router.decide("Apa pendidikan minimum pekerjaan Ilmuwan Dta?")
+        self.assertEqual(decision["mode"], "answer")
+        self.assertEqual(decision["occupation_match"], "fuzzy")
+        self.assertEqual(decision["occupation"]["iri"], "occ:data")
+        self.assertIn("occ:data", [item["iri"] for item in decision["suggestions"]])
+
+    def test_ambiguous_name_asks_the_user_to_choose(self) -> None:
+        decision = self.router.decide("Apa pendidikan minimum pekerjaan Perawat?")
+        self.assertEqual(decision["mode"], "disambiguate")
+        self.assertIsNone(decision.get("occupation"))
+        self.assertEqual(decision["occupation_match"], "ambiguous")
+        self.assertGreaterEqual(len(decision["suggestions"]), 2)
+
+    def test_explicit_choice_keeps_suggestions_for_highlighting(self) -> None:
+        decision = self.router.decide(
+            "Apa pendidikan minimum pekerjaan Perawat?", occupation="occ:nurse-icu"
+        )
+        self.assertEqual(decision["mode"], "answer")
+        self.assertEqual(decision["occupation_match"], "explicit")
+        self.assertEqual(decision["occupation"]["iri"], "occ:nurse-icu")
+        self.assertIn("occ:nurse-icu", [item["iri"] for item in decision["suggestions"]])
+
+    def test_suggestions_are_capped(self) -> None:
+        rows = [_row(f"occ:nurse-{index}", f"Perawat {index}") for index in range(9)]
+        router = QuestionRouter(_StubIndex(rows), None)
+        decision = router.decide("Apa pendidikan minimum pekerjaan Perawat?")
+        self.assertEqual(len(decision["suggestions"]), QuestionRouter.SUGGESTION_LIMIT)
+
+
 if __name__ == "__main__":
     unittest.main()

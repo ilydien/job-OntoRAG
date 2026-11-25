@@ -328,26 +328,23 @@ function AnswerPanel({ data }) {
   )
 }
 
-function CandidatePicker({ data, onPick }) {
+function SuggestionPicker({ options, activeIri, onPick }) {
   return (
-    <section className="answer">
-      <p className="eyebrow">{data.label || 'Pilih pekerjaan'}</p>
-      <h2>Pekerjaan mana yang dimaksud?</h2>
-      <p className="desc">Nama yang Anda tulis cocok dengan beberapa pekerjaan.</p>
-      <ul className="requirement-list">
-        {(data.items || []).map((candidate) => (
-          <li key={candidate.iri}>
-            <span>{candidate.title}</span>
-            <button
-              type="button"
-              className="requirement-link"
-              onClick={() => onPick(candidate)}
-            >
-              Pilih
-            </button>
-          </li>
+    <section className="suggestions">
+      <p className="suggestions-head">Apakah yang kamu maksud:</p>
+      <div className="chips">
+        {options.map((option) => (
+          <button
+            key={option.iri}
+            type="button"
+            className={`chip${option.iri === activeIri ? ' chip--active' : ''}`}
+            aria-pressed={option.iri === activeIri}
+            onClick={() => onPick(option)}
+          >
+            {option.title}
+          </button>
         ))}
-      </ul>
+      </div>
     </section>
   )
 }
@@ -474,7 +471,8 @@ export default function App() {
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
   const [answer, setAnswer] = useState(null)
-  const [candidates, setCandidates] = useState(null)
+  const [suggestions, setSuggestions] = useState([])
+  const [question, setQuestion] = useState('')
   const [interestText, setInterestText] = useState('')
   const [requirement, setRequirement] = useState(null)
   const [requirementTitle, setRequirementTitle] = useState('')
@@ -495,7 +493,7 @@ export default function App() {
     setLoading(true)
     setError('')
     setAnswer(null)
-    setCandidates(null)
+    setSuggestions([])
     try {
       const data = await ask({
         text: query,
@@ -510,18 +508,18 @@ export default function App() {
         setInterestText(query)
       } else if (data.mode === 'answer') {
         setResult(null)
+        setQuestion(query)
         setAnswer(data)
+        setSuggestions(data.suggestions || [])
       } else if (data.mode === 'disambiguate') {
         setResult(null)
-        setCandidates({
-          question: query,
-          label: data.label,
-          items: data.candidates || [],
-        })
+        setQuestion(query)
+        setSuggestions(data.suggestions || [])
       } else {
         setResult(null)
         setAnswer({
           label: data.label,
+          match: data.match,
           occupation: null,
           answer: {
             heading: 'Nama pekerjaan belum dikenali',
@@ -536,20 +534,20 @@ export default function App() {
       setError(err.message)
       setResult(null)
       setAnswer(null)
+      setSuggestions([])
     } finally {
       setLoading(false)
     }
   }
 
   async function pickCandidate(candidate) {
-    const question = candidates?.question || text
-    if (loading) return
+    const query = question || text.trim()
+    if (!query || loading) return
     setLoading(true)
     setError('')
-    setCandidates(null)
     try {
       const data = await ask({
-        text: question,
+        text: query,
         language: 'id',
         education: education || null,
         max_job_zone: jobZone ? Number(jobZone) : null,
@@ -560,9 +558,11 @@ export default function App() {
       if (data.mode === 'answer') {
         setResult(null)
         setAnswer(data)
+        setSuggestions(data.suggestions || [])
       } else if (data.mode === 'recommend') {
         setResult(data)
-        setInterestText(question)
+        setInterestText(query)
+        setSuggestions([])
       }
     } catch (err) {
       setError(err.message)
@@ -732,7 +732,7 @@ export default function App() {
 
           <section className="results" aria-live="polite">
             <div className="section-head">
-              <h2>{answer ? 'Jawaban' : candidates ? 'Pilih pekerjaan' : 'Rekomendasi'}</h2>
+              <h2>{answer ? 'Jawaban' : suggestions.length ? 'Pilih pekerjaan' : 'Rekomendasi'}</h2>
               {result ? (
                 <span>
                   {recommendations.length} okupasi
@@ -744,7 +744,7 @@ export default function App() {
 
             {loading ? <Skeletons /> : null}
 
-            {!loading && !answer && !candidates && !result ? (
+            {!loading && !answer && !suggestions.length && !result ? (
               <div className="intro">
                 <p>
                   Tulis minatmu untuk mendapat rekomendasi, atau tanyakan hal spesifik tentang
@@ -753,11 +753,15 @@ export default function App() {
               </div>
             ) : null}
 
-            {!loading && answer ? <AnswerPanel data={answer} /> : null}
-
-            {!loading && candidates ? (
-              <CandidatePicker data={candidates} onPick={pickCandidate} />
+            {!loading && suggestions.length ? (
+              <SuggestionPicker
+                options={suggestions}
+                activeIri={answer?.occupation?.iri}
+                onPick={pickCandidate}
+              />
             ) : null}
+
+            {!loading && answer ? <AnswerPanel data={answer} /> : null}
 
             {!loading && result && recommendations.length === 0 ? (
               <div className="intro">
