@@ -365,6 +365,13 @@ textarea {
   max-width: 60ch;
 }
 
+.answer {
+  padding: 24px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
 .cards {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

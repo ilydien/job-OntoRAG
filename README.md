@@ -329,6 +329,32 @@ python -m ontorag.cli build-index --rebuild --quiet \
   --extra-source db_31_0_turtle/Occupation.ttl
 ```
 
+## Free-text questions about one occupation
+
+A question that names one occupation is routed to a direct answer instead of a
+recommendation list. The question vocabulary lives in
+`config/question_lexicon.ttl`; the router in `ontorag/questions.py` only applies
+it. Text that is an interest description still produces recommendations.
+
+```bash
+python -m ontorag.cli ask --text "Apa pendidikan minimum pekerjaan Ilmuwan Data?"
+python -m ontorag.cli ask --text "Apa 5 tugas inti pekerjaan Ilmuwan Data?" --format json
+```
+
+If the occupation name is ambiguous the router lists candidates; pass
+`--occupation <iri>` to answer for one of them.
+
+Web API:
+
+```http
+POST /api/ask           { "text": "...", "language": "id", "context": "<last interest text>" }
+GET  /api/occupation/search?q=ilmuwan+data
+```
+
+`POST /api/ask` returns `mode: "answer"`, `"disambiguate"`, `"recommend"`, or
+`"need_occupation"`. The `context` field lets "mengapa direkomendasikan?" and
+"komponen skor" questions reuse the last recommendation run.
+
 ## Declared skill levels and readiness
 
 A profile can declare O*NET element proficiency levels on the O*NET Level scale

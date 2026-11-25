@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { getMeta, getProfile, getRequirements, recommend } from './api.js'
+import { ask, getMeta, getProfile, getRequirements } from './api.js'
 
 const EXAMPLES = [
   { label: 'Merawat hewan', text: 'Saya suka merawat hewan dan membantu dokter hewan.' },
   { label: 'Analisis data', text: 'Saya suka menganalisis data dan membangun model.' },
   { label: 'Mendesain bangunan', text: 'Saya suka mendesain bangunan dan menata ruang.' },
   { label: 'Mengajar anak', text: 'Saya suka mengajar anak-anak di sekolah dasar.' },
+  { label: 'Tanya pendidikan', text: 'Apa pendidikan minimum pekerjaan Ilmuwan Data?' },
+  { label: 'Tanya tugas', text: 'Apa 5 tugas inti pekerjaan Ilmuwan Data?' },
 ]
 
 const TONES = ['rose', 'peach', 'sage', 'blue', 'butter']
@@ -266,6 +268,85 @@ function OccupationProfileModal({ data, title, loading, error, onClose }) {
   )
 }
 
+function AnswerPanel({ data }) {
+  const answer = data?.answer
+  if (!answer) return null
+  return (
+    <section className="answer">
+      <p className="eyebrow">
+        {data.label || 'Jawaban'}
+        {data.occupation?.title ? ` · ${data.occupation.title}` : ''}
+      </p>
+      <h2>{answer.heading}</h2>
+      {answer.summary ? <p className="desc">{answer.summary}</p> : null}
+
+      {answer.facts?.length ? (
+        <div className="requirement-facts">
+          {answer.facts.map((fact) => (
+            <div key={fact.label}>
+              <span className="requirement-label">{fact.label}</span>
+              <strong>{fact.value || '-'}</strong>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {answer.items?.length ? (
+        <ul className="requirement-list">
+          {answer.items.map((item, index) => (
+            <li key={`${item.title}-${index}`}>
+              <span>{item.title}</span>
+              {item.detail ? <span className="requirement-score">{item.detail}</span> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {(answer.groups || []).map((group) => (
+        <section className="requirement-section" key={group.heading}>
+          <h3>{group.heading}</h3>
+          {group.items?.length ? (
+            <ul className="requirement-list">
+              {group.items.map((item, index) => (
+                <li key={`${item.title}-${index}`}>
+                  <span>{item.title}</span>
+                  {item.detail ? <span className="requirement-score">{item.detail}</span> : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="modal-muted">Belum ada data.</p>
+          )}
+        </section>
+      ))}
+    </section>
+  )
+}
+
+function CandidatePicker({ data, onPick }) {
+  return (
+    <section className="answer">
+      <p className="eyebrow">{data.label || 'Pilih pekerjaan'}</p>
+      <h2>Pekerjaan mana yang dimaksud?</h2>
+      <p className="desc">Nama yang Anda tulis cocok dengan beberapa pekerjaan.</p>
+      <ul className="requirement-list">
+        {(data.items || []).map((candidate) => (
+          <li key={candidate.iri}>
+            <span>{candidate.title}</span>
+            <button
+              type="button"
+              className="requirement-link"
+              onClick={() => onPick(candidate)}
+            >
+              Pilih
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 function ProfilePanel({ profile }) {
   const holland = profile ? Object.entries(profile.holland || {}) : []
   const elements = profile ? profile.elements || [] : []
@@ -360,6 +441,10 @@ function HowItWorks() {
         <li>
           <b>Peringkat</b> menggabungkan Holland, elemen, dan kecocokan ontology.
         </li>
+        <li>
+          <b>Pertanyaan</b> tentang satu pekerjaan dijawab langsung dari index: tugas, DWA,
+          pendidikan, skill, dan konteks kerja.
+        </li>
       </ol>
     </section>
   )
@@ -383,6 +468,9 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
+  const [answer, setAnswer] = useState(null)
+  const [candidates, setCandidates] = useState(null)
+  const [interestText, setInterestText] = useState('')
   const [requirement, setRequirement] = useState(null)
   const [requirementTitle, setRequirementTitle] = useState('')
   const [requirementLoading, setRequirementLoading] = useState(false)
@@ -401,18 +489,78 @@ export default function App() {
     if (!query || loading) return
     setLoading(true)
     setError('')
+    setAnswer(null)
+    setCandidates(null)
     try {
-      const data = await recommend({
+      const data = await ask({
         text: query,
         language: 'id',
         education: education || null,
         max_job_zone: jobZone ? Number(jobZone) : null,
         top_k: 8,
+        context: interestText || null,
       })
-      setResult(data)
+      if (data.mode === 'recommend') {
+        setResult(data)
+        setInterestText(query)
+      } else if (data.mode === 'answer') {
+        setResult(null)
+        setAnswer(data)
+      } else if (data.mode === 'disambiguate') {
+        setResult(null)
+        setCandidates({
+          question: query,
+          label: data.label,
+          items: data.candidates || [],
+        })
+      } else {
+        setResult(null)
+        setAnswer({
+          label: data.label,
+          occupation: null,
+          answer: {
+            heading: 'Nama pekerjaan belum dikenali',
+            summary: data.message || 'Sebutkan nama pekerjaan dengan lebih jelas.',
+            facts: [],
+            items: [],
+            groups: [],
+          },
+        })
+      }
     } catch (err) {
       setError(err.message)
       setResult(null)
+      setAnswer(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function pickCandidate(candidate) {
+    const question = candidates?.question || text
+    if (loading) return
+    setLoading(true)
+    setError('')
+    setCandidates(null)
+    try {
+      const data = await ask({
+        text: question,
+        language: 'id',
+        education: education || null,
+        max_job_zone: jobZone ? Number(jobZone) : null,
+        top_k: 8,
+        context: interestText || null,
+        occupation: candidate.iri,
+      })
+      if (data.mode === 'answer') {
+        setResult(null)
+        setAnswer(data)
+      } else if (data.mode === 'recommend') {
+        setResult(data)
+        setInterestText(question)
+      }
+    } catch (err) {
+      setError(err.message)
     } finally {
       setLoading(false)
     }
@@ -514,7 +662,7 @@ export default function App() {
                 onChange={(event) => setText(event.target.value)}
                 rows={4}
                 maxLength={2000}
-                placeholder="Contoh: Saya suka merawat hewan dan membantu dokter hewan. Saya lulusan S1."
+                placeholder="Contoh: Saya suka merawat hewan dan membantu dokter hewan. Atau tanya: Apa pendidikan minimum pekerjaan Ilmuwan Data?"
               />
 
               <div className="controls">
@@ -548,7 +696,7 @@ export default function App() {
                 </span>
 
                 <button className="go" type="submit" disabled={loading || !text.trim()}>
-                  {loading ? 'Mencari…' : 'Cari karier'}
+                  {loading ? 'Memproses…' : 'Cari atau tanya'}
                   {!loading ? <Icon name="arrow" size={16} /> : null}
                 </button>
               </div>
@@ -579,24 +727,31 @@ export default function App() {
 
           <section className="results" aria-live="polite">
             <div className="section-head">
-              <h2>Rekomendasi</h2>
+              <h2>{answer ? 'Jawaban' : candidates ? 'Pilih pekerjaan' : 'Rekomendasi'}</h2>
               {result ? (
                 <span>
                   {recommendations.length} okupasi
                   {result.meta ? ` · ${result.meta.elapsed_ms} ms` : ''}
                 </span>
               ) : null}
+              {answer?.occupation?.soc ? <span>{answer.occupation.soc}</span> : null}
             </div>
 
             {loading ? <Skeletons /> : null}
 
-            {!loading && !result ? (
+            {!loading && !answer && !candidates && !result ? (
               <div className="intro">
                 <p>
-                  Tulis minatmu di atas, atau pilih salah satu contoh. Hasil akan muncul sebagai
-                  kartu berisi skor dan elemen ontology yang cocok.
+                  Tulis minatmu untuk mendapat rekomendasi, atau tanyakan hal spesifik tentang
+                  satu pekerjaan, misalnya “Apa pendidikan minimum pekerjaan Ilmuwan Data?”.
                 </p>
               </div>
+            ) : null}
+
+            {!loading && answer ? <AnswerPanel data={answer} /> : null}
+
+            {!loading && candidates ? (
+              <CandidatePicker data={candidates} onPick={pickCandidate} />
             ) : null}
 
             {!loading && result && recommendations.length === 0 ? (
@@ -608,7 +763,7 @@ export default function App() {
               </div>
             ) : null}
 
-            {!loading && recommendations.length > 0 ? (
+            {!loading && result && recommendations.length > 0 ? (
               <div className="cards">
                 {recommendations.map((item, index) => (
                   <ResultCard

@@ -458,6 +458,11 @@ class Index:
         )
         return dict(rows[0]) if rows else None
 
+    def occupation_catalog(self) -> List[dict]:
+        """Return every indexed occupation title for name matching."""
+
+        return [dict(row) for row in self.query("occupation_catalog.sql")]
+
     def requirements_for(
         self,
         occupation_iri: str,

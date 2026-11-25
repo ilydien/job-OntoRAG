@@ -339,6 +339,58 @@ def cmd_requirements(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_ask(args: argparse.Namespace) -> int:
+    from .policy import load_index_policy, load_ranking_policy
+    from .query_engine import Index
+    from .questions import EVIDENCE_INTENTS, QuestionRouter
+
+    policy = load_ranking_policy(args.policy)
+    index_policy = load_index_policy(args.index_policy)
+    with Index(args.index) as index:
+        router = QuestionRouter(index, policy, index_policy)
+        decision = router.decide(
+            args.text, language=args.language or "id", occupation=args.occupation
+        )
+        if decision["mode"] == "recommend":
+            print("mode: recommend (teks ini dianggap deskripsi minat, bukan pertanyaan)")
+            return 0
+        if decision["mode"] != "answer":
+            print(f"mode: {decision['mode']}")
+            if decision.get("message"):
+                print(decision["message"])
+            for candidate in decision.get("candidates", []):
+                print(f"- {candidate.get('title')} [{candidate.get('soc')}] {candidate.get('iri')}")
+            return 0
+        if decision["intent"] in EVIDENCE_INTENTS:
+            print(f"{decision.get('label')}: butuh konteks pencarian; jawab lewat web UI.")
+            return 0
+        answer = router.answer(decision["intent"], decision["occupation"], args.language or "id")
+    if args.format == "json":
+        print(json.dumps(
+            {
+                "intent": decision["intent"],
+                "occupation": decision["occupation"],
+                "answer": answer,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ))
+        return 0
+    occupation = decision["occupation"]
+    print(f"{decision.get('label')} · {occupation.get('title')} [{occupation.get('soc') or '-'}]")
+    print(answer["heading"])
+    print(answer["summary"])
+    for fact in answer["facts"]:
+        print(f"- {fact['label']}: {fact['value']}")
+    for item in answer["items"]:
+        print(f"- {item['title']}" + (f": {item['detail']}" if item.get("detail") else ""))
+    for group in answer["groups"]:
+        print(f"\n{group['heading']}:")
+        for item in group["items"]:
+            print(f"- {item['title']}" + (f": {item['detail']}" if item.get("detail") else ""))
+    return 0
+
+
 def cmd_benchmark(args: argparse.Namespace) -> int:
     from .benchmark import BenchmarkResult, evaluate, load_gold_set
     from .reasoning import JAVA_ENV
@@ -564,6 +616,19 @@ def build_parser() -> argparse.ArgumentParser:
     requirements.add_argument("--language", choices=["id", "en"], default=None)
     requirements.add_argument("--format", choices=["table", "json"], default="table")
     requirements.set_defaults(func=cmd_requirements)
+
+    ask = sub.add_parser(
+        "ask",
+        help="route a free-text question about one occupation to an answer",
+    )
+    ask.add_argument("--text", required=True, help="question, e.g. 'Apa pendidikan minimum pekerjaan Ilmuwan Data?'")
+    ask.add_argument("--occupation", default=None, help="explicit occupation IRI, skipping name matching")
+    ask.add_argument("--index", default=str(config.DEFAULT_INDEX), help="SQLite index path")
+    ask.add_argument("--policy", default=str(config.DEFAULT_POLICY), help="ranking policy TTL")
+    ask.add_argument("--index-policy", default=str(config.DEFAULT_INDEX_POLICY), help="index policy TTL")
+    ask.add_argument("--language", choices=["id", "en"], default=None)
+    ask.add_argument("--format", choices=["table", "json"], default="table")
+    ask.set_defaults(func=cmd_ask)
 
     benchmark = sub.add_parser(
         "benchmark",

@@ -55,10 +55,12 @@ DEFAULT_POLICY = CONFIG_DIR / "ranking_policy.ttl"
 DEFAULT_INDEX_POLICY = CONFIG_DIR / "index_policy.ttl"
 DEFAULT_CONFIG_VOCAB = CONFIG_DIR / "config_vocab.ttl"
 DEFAULT_LEXICON = CONFIG_DIR / "lexicon.ttl"
+DEFAULT_QUESTION_LEXICON = CONFIG_DIR / "question_lexicon.ttl"
 
 ONET = "https://www.onetcenter.org/rdf/schema/onet/"
 CAREER = "https://example.org/career#"
 LEX = "https://example.org/lex#"
+QLEX = "https://example.org/qlex#"
 XSD = "http://www.w3.org/2001/XMLSchema#"
 RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 RDFS = "http://www.w3.org/2000/01/rdf-schema#"
@@ -74,6 +76,7 @@ PREFIXES = {
     "onet": ONET,
     "career": CAREER,
     "lex": LEX,
+    "qlex": QLEX,
     "owl": OWL,
     "rdf": RDF,
     "rdfs": RDFS,
@@ -96,6 +99,7 @@ class Paths:
     index_policy: Path = DEFAULT_INDEX_POLICY
     config_vocab: Path = DEFAULT_CONFIG_VOCAB
     lexicon: Path = DEFAULT_LEXICON
+    question_lexicon: Path = DEFAULT_QUESTION_LEXICON
     rules_dir: Path = RULES_DIR
     queries_dir: Path = QUERIES_DIR
 

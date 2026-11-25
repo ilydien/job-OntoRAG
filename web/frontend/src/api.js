@@ -14,6 +14,17 @@ export async function recommend(body) {
   if (!response.ok) throw new Error(data.detail || 'Permintaan gagal.')
   return data
 }
+
+export async function ask(body) {
+  const response = await fetch('/api/ask', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(data.detail || 'Pertanyaan gagal diproses.')
+  return data
+}
 export async function getRequirements(iri, language = 'id') {
   const params = new URLSearchParams({ iri, language })
   const response = await fetch(`/api/occupation/requirements?${params}`)
